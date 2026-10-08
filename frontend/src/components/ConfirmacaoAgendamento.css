@@ -1,0 +1,88 @@
+.confirmacao {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding-top: 10px;
+}
+
+/* Check animado: o círculo aparece e o traço se desenha */
+.confirmacao-check {
+  width: 84px;
+  height: 84px;
+  margin-bottom: 18px;
+  border-radius: 50%;
+  background: #EAF7EF;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: check-pop 0.4s ease-out both;
+}
+.confirmacao-check svg { width: 52px; height: 52px; }
+.confirmacao-check circle { fill: var(--verde-selecionado); }
+.confirmacao-check path {
+  fill: none;
+  stroke: #fff;
+  stroke-width: 4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 40;
+  stroke-dashoffset: 40;
+  animation: check-traco 0.35s 0.3s ease-out forwards;
+}
+
+@keyframes check-pop {
+  from { transform: scale(0.6); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+@keyframes check-traco { to { stroke-dashoffset: 0; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .confirmacao-check { animation: none; }
+  .confirmacao-check path { animation: none; stroke-dashoffset: 0; }
+}
+
+.confirmacao-titulo {
+  font-size: 1.4rem;
+  font-weight: 600;
+  color: var(--texto-escuro);
+  margin-bottom: 6px;
+}
+.confirmacao-texto {
+  color: var(--texto-claro);
+  margin-bottom: 24px;
+}
+
+/* Resumo no mesmo estilo do cartão do calendário */
+.confirmacao-resumo {
+  width: 100%;
+  text-align: left;
+  background: #fff;
+  border: 1px solid var(--borda);
+  border-radius: 20px;
+  padding: 6px 18px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
+  margin-bottom: 18px;
+}
+.confirmacao-resumo > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 0;
+  border-bottom: 1px solid #F0F0F0;
+}
+.confirmacao-resumo > div:last-child { border-bottom: none; }
+.confirmacao-resumo dt { color: var(--texto-claro); font-size: 0.9rem; }
+.confirmacao-resumo dd {
+  color: var(--texto-escuro);
+  font-weight: 600;
+  text-align: right;
+}
+.confirmacao-total dd { color: var(--rosa-botao); font-size: 1.1rem; }
+
+.confirmacao-aviso {
+  font-size: 0.85rem;
+  color: var(--texto-claro);
+  margin-bottom: 24px;
+}
+.confirmacao-aviso i { color: #25D366; margin-right: 4px; }

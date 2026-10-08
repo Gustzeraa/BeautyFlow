@@ -1,0 +1,167 @@
+/* Usa as variáveis do App.css (--rosa-fundo, --rosa-botao, --borda...) */
+
+.app-container.admin { max-width: 460px; }
+
+.admin .header { position: relative; padding-bottom: 18px; }
+.admin-subtitulo { color: var(--texto-claro); font-size: 0.9rem; }
+
+.admin-sair {
+  position: absolute; top: 20px; right: 16px;
+  background: none; border: none; border-radius: 8px;
+  padding: 6px 10px; font-size: 0.85rem; font-weight: 600;
+  color: var(--texto-escuro); cursor: pointer;
+}
+.admin-sair:hover { background: rgba(255, 255, 255, 0.6); }
+
+/* Abas em formato de pílula */
+.admin-abas {
+  display: flex; margin-top: 18px; padding: 4px;
+  background: rgba(255, 255, 255, 0.55); border-radius: 30px;
+}
+.admin-abas button {
+  flex: 1; padding: 10px; border: none; border-radius: 26px; background: none;
+  font: inherit; font-size: 0.95rem; font-weight: 600;
+  color: var(--texto-claro); cursor: pointer;
+  transition: background-color 0.2s, color 0.2s;
+}
+.admin-abas button.ativa {
+  background: #fff; color: var(--texto-escuro);
+  box-shadow: 0 2px 8px rgba(212, 106, 122, 0.18);
+}
+
+/* Pontinho nos dias com agendamento */
+.day-btn { position: relative; }
+.day-btn.has-event::after {
+  content: ''; position: absolute; bottom: 3px; left: 50%;
+  width: 5px; height: 5px; border-radius: 50%;
+  transform: translateX(-50%); background: var(--rosa-botao);
+}
+.day-btn.selected.has-event::after { background: #fff; }
+
+/* Agenda do dia */
+.agenda-dia-titulo { font-size: 1.05rem; font-weight: 600; color: var(--texto-escuro); }
+.agenda-resumo { margin: 4px 0 14px; font-size: 0.9rem; color: var(--texto-claro); }
+.agenda-lista, .servicos-lista { list-style: none; display: flex; flex-direction: column; gap: 12px; }
+
+.agenda-item {
+  display: flex; align-items: center; gap: 14px; padding: 14px;
+  background: #fff; border: 1px solid var(--borda);
+  border-left: 4px solid var(--rosa-botao); border-radius: 14px;
+}
+.agenda-hora {
+  display: flex; flex-direction: column; align-items: center;
+  min-width: 56px; font-variant-numeric: tabular-nums;
+}
+.agenda-hora strong { font-size: 1.1rem; color: var(--texto-escuro); }
+.agenda-hora span { font-size: 0.75rem; color: var(--texto-claro); }
+
+.agenda-info, .servico-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.agenda-info strong, .servico-info strong {
+  font-size: 1rem; color: var(--texto-escuro);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.agenda-info span { font-size: 0.88rem; color: var(--texto-claro); }
+.agenda-info .agenda-preco { color: var(--rosa-botao); font-weight: 600; }
+
+.agenda-whats {
+  flex-shrink: 0; width: 44px; height: 44px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  background: #E9F9EF; color: #25D366; font-size: 1.35rem; text-decoration: none;
+}
+
+/* Serviços */
+.servicos-topo { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+.servicos-topo h3 { font-size: 1.05rem; color: var(--texto-escuro); }
+
+.btn-novo {
+  display: flex; align-items: center; gap: 6px;
+  padding: 10px 16px; border: none; border-radius: 30px;
+  background: var(--rosa-botao); color: #fff;
+  font-size: 0.9rem; font-weight: 600; cursor: pointer;
+  box-shadow: 0 4px 12px rgba(212, 106, 122, 0.3);
+}
+
+.servico-item {
+  display: flex; align-items: center; gap: 8px; padding: 14px;
+  border: 1px solid var(--borda); border-radius: 14px; background: #fff;
+}
+.servico-detalhes { display: flex; gap: 14px; font-size: 0.88rem; color: var(--texto-claro); }
+.servico-preco { color: var(--rosa-botao); font-weight: 600; }
+
+.btn-icone {
+  flex-shrink: 0; width: 38px; height: 38px; border: none; border-radius: 50%;
+  background: #F5F5F5; color: var(--texto-escuro); cursor: pointer;
+}
+.btn-icone.perigo { background: #FDEEEE; color: #C0392B; }
+
+/* Folha que sobe de baixo para criar/editar serviço */
+.sheet-fundo {
+  position: fixed; inset: 0; z-index: 50;
+  display: flex; align-items: flex-end; justify-content: center;
+  background: rgba(51, 51, 51, 0.35);
+}
+.sheet {
+  width: 100%; max-width: 460px; background: #fff;
+  border-radius: 28px 28px 0 0;
+  padding: 26px 20px calc(20px + env(safe-area-inset-bottom));
+  animation: sheet-sobe 0.22s ease-out;
+}
+.sheet h3 { margin-bottom: 24px; font-size: 1.15rem; color: var(--texto-escuro); }
+@media (min-width: 601px) {
+  .sheet-fundo { align-items: center; }
+  .sheet { border-radius: 28px; }
+}
+@keyframes sheet-sobe { from { transform: translateY(30px); opacity: 0; } to { transform: none; opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .sheet { animation: none; } }
+
+.btn-texto {
+  width: 100%; margin-top: 6px; padding: 14px; border: none; background: none;
+  font-size: 0.95rem; font-weight: 600; color: var(--texto-claro); cursor: pointer;
+}
+
+/* Estados */
+.admin-carregando { padding: 16px; text-align: center; color: var(--texto-claro); }
+.admin-vazio {
+  margin-top: 10px; padding: 22px 16px; text-align: center; font-size: 0.92rem;
+  color: var(--texto-claro); border: 1px dashed var(--borda); border-radius: 14px;
+}
+.admin-erro { margin-bottom: 14px; font-size: 0.9rem; color: #C0392B; }
+
+.btn-confirmar:disabled { opacity: 0.6; cursor: default; }
+.text-input:focus, .select-input:focus { border-color: var(--rosa-botao); }
+
+.admin button:focus-visible, .admin a:focus-visible, .sheet button:focus-visible {
+  outline: 2px solid var(--rosa-botao); outline-offset: 2px;
+}
+
+/* --- Cancelamento de agendamento --- */
+.agenda-acoes { display: flex; gap: 8px; flex-shrink: 0; }
+.agenda-cancelar {
+  width: 44px; height: 44px; border: none; border-radius: 50%;
+  background: #FDEEEE; color: #C0392B; font-size: 1.1rem; cursor: pointer;
+}
+
+.cancelar-resumo {
+  background: #FAFAFA; border-radius: 16px; padding: 4px 16px; margin-bottom: 14px;
+}
+.cancelar-resumo > div {
+  display: flex; justify-content: space-between; gap: 16px;
+  padding: 12px 0; border-bottom: 1px solid #EEEEEE;
+}
+.cancelar-resumo > div:last-child { border-bottom: none; }
+.cancelar-resumo dt { color: var(--texto-claro); font-size: 0.9rem; }
+.cancelar-resumo dd { color: var(--texto-escuro); font-weight: 600; text-align: right; }
+
+.cancelar-aviso { font-size: 0.88rem; color: var(--texto-claro); margin-bottom: 18px; }
+
+.btn-perigo {
+  width: 100%; padding: 16px; border: none; border-radius: 30px;
+  background: #C0392B; color: #fff; font-size: 0.95rem; font-weight: bold; cursor: pointer;
+  box-shadow: 0 6px 15px rgba(192, 57, 43, 0.25);
+}
+.btn-perigo:disabled, .btn-texto:disabled { opacity: 0.6; cursor: default; }
+
+.admin-sucesso {
+  margin: 10px 0 4px; padding: 12px 14px; border-radius: 10px;
+  background: #EAF7EF; color: #2E7D4F; font-size: 0.9rem;
+}
