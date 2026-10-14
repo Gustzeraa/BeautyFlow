@@ -1,6 +1,7 @@
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.db import transaction
+from django.utils import timezone
 from google.auth.transport import requests as google_requests
 from google.oauth2 import id_token
 from rest_framework.authentication import TokenAuthentication
@@ -15,11 +16,22 @@ User = get_user_model()
 
 
 def dados_cliente(usuario, perfil):
+    # Agendamento ainda não concluído (regra de um agendamento por vez)
+    ativo = (
+        Agendamento.objects.filter(cliente=usuario, data_hora_fim__gt=timezone.now())
+        .select_related('servico')
+        .order_by('data_hora_inicio')
+        .first()
+    )
     return {
         'nome': usuario.get_full_name() or usuario.email,
         'email': usuario.email,
         'foto': perfil.foto_url if perfil else '',
         'whatsapp': perfil.whatsapp if perfil else '',
+        'agendamento_ativo': {
+            'servico': ativo.servico.nome,
+            'inicio': ativo.data_hora_inicio,
+        } if ativo else None,
     }
 
 
@@ -91,6 +103,8 @@ def meus_agendamentos(request):
             'preco': str(a.servico.preco),
             'inicio': a.data_hora_inicio,
             'fim': a.data_hora_fim,
+            'sessao_numero': a.sessao_numero,
+            'total_sessoes': a.servico.sessoes,
         }
         for a in agendamentos
     ])

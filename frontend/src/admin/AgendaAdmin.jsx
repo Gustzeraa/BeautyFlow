@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import Calendario, { toISO } from '../components/Calendario'
 import adminApi, { hora, mensagemErro, moeda } from './adminApi'
+import '../components/SessaoExtra.css'
 
 function tituloDoDia(data) {
   const iso = toISO(data)
@@ -59,7 +60,8 @@ export default function AgendaAdmin() {
   const doDia = agendamentos.filter(
     (a) => toISO(new Date(a.data_hora_inicio)) === toISO(dataSelecionada)
   )
-  const total = doDia.reduce((soma, a) => soma + Number(a.servico_preco), 0)
+  // No combo, conta só a parte do valor de cada sessão
+  const total = doDia.reduce((soma, a) => soma + Number(a.valor_sessao ?? a.servico_preco), 0)
 
   // Fecha a folha com Esc
   useEffect(() => {
@@ -79,9 +81,14 @@ export default function AgendaAdmin() {
     setCancelando(true)
     setErroCancelar('')
     try {
-      await adminApi.delete(`/admin/agendamentos/${paraCancelar.id}/`)
-      setAgendamentos((lista) => lista.filter((x) => x.id !== paraCancelar.id))
-      setAviso(`Agendamento de ${paraCancelar.nome_cliente} cancelado. O horário já está livre de novo.`)
+      const { data } = await adminApi.delete(`/admin/agendamentos/${paraCancelar.id}/`)
+      const cancelados = data?.cancelados ?? [paraCancelar.id]
+      setAgendamentos((lista) => lista.filter((x) => !cancelados.includes(x.id)))
+      setAviso(
+        cancelados.length > 1
+          ? `Combo de ${paraCancelar.nome_cliente} cancelado (${cancelados.length} sessões). Os horários já estão livres de novo.`
+          : `Agendamento de ${paraCancelar.nome_cliente} cancelado. O horário já está livre de novo.`
+      )
       setParaCancelar(null)
     } catch (err) {
       setErroCancelar(mensagemErro(err, 'Não foi possível cancelar. Tente de novo em instantes.'))
@@ -132,7 +139,12 @@ export default function AgendaAdmin() {
                 <div className="agenda-info">
                   <strong>{a.nome_cliente}</strong>
                   <span>{a.servico_nome}</span>
-                  <span className="agenda-preco">{moeda(a.servico_preco)}</span>
+                  {a.total_sessoes > 1 && (
+                    <span className="selo-combo">Combo, sessão {a.sessao_numero} de {a.total_sessoes}</span>
+                  )}
+                  <span className="agenda-preco">
+                    {moeda(a.servico_preco)}{a.total_sessoes > 1 && ' (combo)'}
+                  </span>
                 </div>
                 <div className="agenda-acoes">
                   <a
@@ -169,22 +181,43 @@ export default function AgendaAdmin() {
             aria-labelledby="cancelar-titulo"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 id="cancelar-titulo">Cancelar agendamento?</h3>
+            <h3 id="cancelar-titulo">
+              {paraCancelar.total_sessoes > 1 ? 'Cancelar combo?' : 'Cancelar agendamento?'}
+            </h3>
 
             <dl className="cancelar-resumo">
               <div><dt>Cliente</dt><dd>{paraCancelar.nome_cliente}</dd></div>
               <div><dt>Serviço</dt><dd>{paraCancelar.servico_nome}</dd></div>
-              <div><dt>Quando</dt><dd>{tituloDoDia(new Date(paraCancelar.data_hora_inicio))}, {hora(paraCancelar.data_hora_inicio)}</dd></div>
+              {paraCancelar.sessoes_combo?.length > 1 ? (
+                paraCancelar.sessoes_combo.map((sessao) => {
+                  const jaFoi = new Date(sessao.data_hora_inicio) <= new Date()
+                  return (
+                    <div key={sessao.id} className={jaFoi ? 'cancelar-sessao-feita' : ''}>
+                      <dt>{sessao.sessao_numero}ª sessão</dt>
+                      <dd>
+                        {tituloDoDia(new Date(sessao.data_hora_inicio))}, {hora(sessao.data_hora_inicio)}
+                        {jaFoi && <small> (já realizada)</small>}
+                      </dd>
+                    </div>
+                  )
+                })
+              ) : (
+                <div><dt>Quando</dt><dd>{tituloDoDia(new Date(paraCancelar.data_hora_inicio))}, {hora(paraCancelar.data_hora_inicio)}</dd></div>
+              )}
             </dl>
 
             <p className="cancelar-aviso">
-              O horário volta a ficar livre para outras clientes. Isso não pode ser desfeito.
+              {paraCancelar.total_sessoes > 1
+                ? 'Todas as sessões que ainda não aconteceram serão canceladas e os horários voltam a ficar livres. Isso não pode ser desfeito.'
+                : 'O horário volta a ficar livre para outras clientes. Isso não pode ser desfeito.'}
             </p>
 
             {erroCancelar && <p className="admin-erro" role="alert">{erroCancelar}</p>}
 
             <button className="btn-perigo" onClick={confirmarCancelamento} disabled={cancelando}>
-              {cancelando ? 'CANCELANDO…' : 'SIM, CANCELAR AGENDAMENTO'}
+              {cancelando
+                ? 'CANCELANDO…'
+                : paraCancelar.total_sessoes > 1 ? 'SIM, CANCELAR COMBO' : 'SIM, CANCELAR AGENDAMENTO'}
             </button>
             <button className="btn-texto" onClick={() => setParaCancelar(null)} disabled={cancelando}>
               Voltar

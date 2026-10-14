@@ -13,6 +13,8 @@ https://docs.djangoproject.com/en/6.1/ref/settings/
 import os
 from pathlib import Path
 
+import dj_database_url
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -139,4 +141,33 @@ GOOGLE_CLIENT_ID = os.environ.get(
     'GOOGLE_CLIENT_ID',
     '1054316590677-2psoe1hpnt2o6e570on4h6c9mj2n32jt.apps.googleusercontent.com',
 )
+
+
+SECRET_KEY = os.environ.get('SECRET_KEY', SECRET_KEY)
+DEBUG = os.environ.get('DEBUG', 'True') == 'True'
  
+if not DEBUG:
+    # Ex.: ALLOWED_HOSTS=beautyflow-production.up.railway.app
+    ALLOWED_HOSTS = [h.strip() for h in os.environ.get('ALLOWED_HOSTS', '').split(',') if h.strip()]
+    CSRF_TRUSTED_ORIGINS = [f'https://{h}' for h in ALLOWED_HOSTS]
+ 
+    # Só o front publicado pode chamar a API. Ex.: https://beautyflow.vercel.app
+    CORS_ALLOW_ALL_ORIGINS = False
+    CORS_ALLOWED_ORIGINS = [o.strip() for o in os.environ.get('CORS_ALLOWED_ORIGINS', '').split(',') if o.strip()]
+ 
+    # A Railway entrega HTTPS por um proxy
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+ 
+# Banco: PostgreSQL da Railway quando existir DATABASE_URL; senão, o SQLite local
+if os.environ.get('DATABASE_URL'):
+    DATABASES = {'default': dj_database_url.parse(os.environ['DATABASE_URL'], conn_max_age=600)}
+ 
+# Arquivos estáticos (CSS do admin do Django) servidos pelo WhiteNoise
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+if 'whitenoise.middleware.WhiteNoiseMiddleware' not in MIDDLEWARE:
+    MIDDLEWARE.insert(1, 'whitenoise.middleware.WhiteNoiseMiddleware')
+ 
+TIME_ZONE = 'America/Sao_Paulo'
+USE_TZ = True
+ 
+GOOGLE_CLIENT_ID = os.environ.get('GOOGLE_CLIENT_ID', GOOGLE_CLIENT_ID)

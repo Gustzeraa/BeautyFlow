@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import adminApi, { duracaoTexto, mensagemErro, moeda } from './adminApi'
 
-const VAZIO = { id: null, nome: '', preco: '', duracao: 60 }
+const VAZIO = { id: null, nome: '', preco: '', duracao: 60, sessoes: 1, intervalo: 15 }
+const INTERVALOS = [7, 15, 21, 30]
 const DURACOES = Array.from({ length: 24 }, (_, i) => (i + 1) * 15) // 15 min até 6h
 
 // Aceita "45", "45,90", "1.250,00" ou "45.90"
@@ -41,7 +42,14 @@ export default function ServicosAdmin() {
 
   function abrirEdicao(s) {
     setErroForm('')
-    setForm({ id: s.id, nome: s.nome, preco: String(s.preco).replace('.', ','), duracao: s.duracao_minutos })
+    setForm({
+      id: s.id,
+      nome: s.nome,
+      preco: String(s.preco).replace('.', ','),
+      duracao: s.duracao_minutos,
+      sessoes: s.sessoes || 1,
+      intervalo: s.intervalo_dias || 15,
+    })
   }
 
   function fechar() {
@@ -55,7 +63,14 @@ export default function ServicosAdmin() {
     if (!form.nome.trim()) return setErroForm('Informe o nome do serviço.')
     if (!(preco > 0)) return setErroForm('Informe um preço válido, por exemplo 45,00.')
 
-    const payload = { nome: form.nome.trim(), preco: preco.toFixed(2), duracao_minutos: Number(form.duracao) }
+    const sessoes = Number(form.sessoes)
+    const payload = {
+      nome: form.nome.trim(),
+      preco: preco.toFixed(2),
+      duracao_minutos: Number(form.duracao),
+      sessoes,
+      intervalo_dias: sessoes > 1 ? Number(form.intervalo) : 0,
+    }
     setSalvando(true)
     setErroForm('')
     try {
@@ -114,6 +129,9 @@ export default function ServicosAdmin() {
               <div className="servico-detalhes">
                 <span className="servico-preco">{moeda(s.preco)}</span>
                 <span><i className="far fa-clock" /> {duracaoTexto(s.duracao_minutos)}</span>
+                {s.sessoes > 1 && (
+                  <span>{s.sessoes} sessões, a cada {s.intervalo_dias} dias</span>
+                )}
               </div>
             </div>
             <button className="btn-icone" onClick={() => abrirEdicao(s)} aria-label={`Editar ${s.nome}`}>
@@ -147,7 +165,7 @@ export default function ServicosAdmin() {
                 />
               </div>
               <div className="input-wrapper">
-                <label htmlFor="srv-preco">Preço (R$)</label>
+                <label htmlFor="srv-preco">{Number(form.sessoes) > 1 ? 'Preço do combo (R$)' : 'Preço (R$)'}</label>
                 <input
                   id="srv-preco" className="text-input" inputMode="decimal" placeholder="120,00"
                   value={form.preco} onChange={(e) => setForm({ ...form, preco: e.target.value })}
@@ -164,6 +182,31 @@ export default function ServicosAdmin() {
                   ))}
                 </select>
               </div>
+              <div className="input-wrapper">
+                <label htmlFor="srv-sessoes">Tipo</label>
+                <select
+                  id="srv-sessoes" className="select-input"
+                  value={form.sessoes} onChange={(e) => setForm({ ...form, sessoes: e.target.value })}
+                >
+                  <option value={1}>Avulso (1 sessão)</option>
+                  <option value={2}>Combo com 2 sessões</option>
+                  <option value={3}>Combo com 3 sessões</option>
+                  <option value={4}>Combo com 4 sessões</option>
+                </select>
+              </div>
+              {Number(form.sessoes) > 1 && (
+                <div className="input-wrapper">
+                  <label htmlFor="srv-intervalo">Intervalo entre sessões</label>
+                  <select
+                    id="srv-intervalo" className="select-input"
+                    value={form.intervalo} onChange={(e) => setForm({ ...form, intervalo: e.target.value })}
+                  >
+                    {INTERVALOS.map((d) => (
+                      <option key={d} value={d}>{d === 15 ? '15 dias (quinzenal)' : `${d} dias`}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
             </div>
 
             {erroForm && <p className="admin-erro" role="alert">{erroForm}</p>}

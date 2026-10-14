@@ -1,0 +1,142 @@
+.combo-info {
+  background: var(--rosa-fundo);
+  border-radius: 14px;
+  padding: 12px 14px;
+  font-size: 0.88rem;
+  color: var(--texto-escuro);
+  margin: -6px 0 20px;
+}
+.combo-info strong { color: var(--rosa-botao); }
+
+.combo-titulo {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--texto-escuro);
+  margin-bottom: 4px;
+}
+.combo-texto {
+  font-size: 0.88rem;
+  color: var(--texto-claro);
+  margin-bottom: 14px;
+}
+
+.sessao-extra {
+  border: 1px solid var(--borda);
+  border-radius: 20px;
+  padding: 14px 15px 4px;
+  margin-bottom: 25px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
+}
+.sessao-extra-topo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.sessao-badge {
+  background: var(--rosa-botao);
+  color: #fff;
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 20px;
+}
+.sessao-sugerida { font-size: 0.8rem; color: var(--texto-claro); }
+
+.sessao-extra-data {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.sessao-extra-data strong {
+  flex: 1;
+  text-align: center;
+  font-size: 0.98rem;
+  color: var(--texto-escuro);
+}
+.sessao-extra-data button {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid var(--borda);
+  background: #fff;
+  font-size: 1rem;
+  color: var(--texto-escuro);
+  cursor: pointer;
+}
+.sessao-extra-data button:disabled { opacity: 0.35; cursor: not-allowed; }
+.sessao-extra-horarios { margin-bottom: 15px; }
+
+/* Selo "sessão 1 de 2" usado na agenda e em Meus horários */
+.selo-combo {
+  display: inline-block;
+  align-self: flex-start;
+  background: var(--rosa-fundo);
+  color: var(--rosa-botao);
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 10px;
+  margin-top: 2px;
+}
+
+/* Sessão do combo que já aconteceu (na folha de cancelamento do painel) */
+.cancelar-sessao-feita dt,
+.cancelar-sessao-feita dd { opacity: 0.55; }
+.cancelar-sessao-feita small { font-weight: 400; }
+
+/* Escolha entre a data do combo e o dia seguinte */
+.sessao-extra-dias {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.sessao-extra-dias button {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 10px 8px;
+  border: 1px solid var(--borda);
+  border-radius: 12px;
+  background: #fff;
+  cursor: pointer;
+}
+.sessao-extra-dias button strong { font-size: 0.95rem; color: var(--texto-escuro); }
+.sessao-extra-dias button span { font-size: 0.75rem; color: var(--texto-claro); }
+.sessao-extra-dias button.ativo {
+  border-color: var(--texto-escuro);
+  background: var(--texto-escuro);
+}
+.sessao-extra-dias button.ativo strong,
+.sessao-extra-dias button.ativo span { color: #fff; }
+
+/* Aviso de agendamento em andamento (um agendamento por vez) */
+.aviso-ativo {
+  text-align: center;
+  background: var(--rosa-fundo);
+  border-radius: 20px;
+  padding: 22px 18px;
+}
+.aviso-ativo-titulo {
+  font-weight: 600;
+  font-size: 1.05rem;
+  color: var(--texto-escuro);
+  margin-bottom: 10px;
+}
+.aviso-ativo-horario {
+  background: #fff;
+  border-radius: 14px;
+  padding: 12px;
+  margin-bottom: 12px;
+  color: var(--texto-escuro);
+}
+.aviso-ativo-horario strong { display: block; color: var(--rosa-botao); margin-bottom: 2px; }
+.aviso-ativo-texto {
+  font-size: 0.88rem;
+  color: var(--texto-claro);
+  margin-bottom: 18px;
+}

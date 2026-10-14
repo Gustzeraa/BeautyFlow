@@ -73,10 +73,15 @@ export default function MeusHorarios({ sessao, onAgendar, onSessaoExpirada }) {
                 </div>
                 <div className="meus-info">
                   <strong>{a.servico}</strong>
+                  {a.total_sessoes > 1 && (
+                    <span className="selo-combo">Combo, sessão {a.sessao_numero} de {a.total_sessoes}</span>
+                  )}
                   <span>{diaPorExtenso(a.inicio)}</span>
                   <span>
                     {hora(a.inicio)}{a.fim && ` às ${hora(a.fim)}`}
-                    <span className="meus-preco"> · {moeda(a.preco)}</span>
+                    {(a.total_sessoes <= 1 || a.sessao_numero === 1) && (
+                      <span className="meus-preco"> · {moeda(a.preco)}</span>
+                    )}
                   </span>
                   <a
                     className="meus-remarcar"

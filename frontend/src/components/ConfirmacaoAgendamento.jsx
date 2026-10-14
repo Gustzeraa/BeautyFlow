@@ -30,16 +30,27 @@ export default function ConfirmacaoAgendamento({ dados, onNovoAgendamento, onVer
           <dt>Serviço</dt>
           <dd>{dados.servico}</dd>
         </div>
-        <div>
-          <dt>Data</dt>
-          <dd>{dataPorExtenso(dados.data)}</dd>
-        </div>
-        <div>
-          <dt>Horário</dt>
-          <dd>{dados.hora}</dd>
-        </div>
+        {dados.sessoes?.length > 1 ? (
+          dados.sessoes.map((sessao, i) => (
+            <div key={i}>
+              <dt>{i + 1}ª sessão</dt>
+              <dd>{dataPorExtenso(sessao.data)}, {sessao.hora}</dd>
+            </div>
+          ))
+        ) : (
+          <>
+            <div>
+              <dt>Data</dt>
+              <dd>{dataPorExtenso(dados.data)}</dd>
+            </div>
+            <div>
+              <dt>Horário</dt>
+              <dd>{dados.hora}</dd>
+            </div>
+          </>
+        )}
         <div className="confirmacao-total">
-          <dt>Valor</dt>
+          <dt>{dados.sessoes?.length > 1 ? 'Valor do combo' : 'Valor'}</dt>
           <dd>{moeda(dados.preco)}</dd>
         </div>
       </dl>
@@ -53,12 +64,12 @@ export default function ConfirmacaoAgendamento({ dados, onNovoAgendamento, onVer
           VER MEUS HORÁRIOS
         </button>
       )}
-      <button
-        className={onVerMeusHorarios ? 'confirmacao-link' : 'btn-confirmar'}
-        onClick={onNovoAgendamento}
-      >
-        {onVerMeusHorarios ? 'Fazer outro agendamento' : 'FAZER OUTRO AGENDAMENTO'}
-      </button>
+      {/* Com login vale a regra de um agendamento por vez, então não oferece marcar outro */}
+      {!onVerMeusHorarios && (
+        <button className="btn-confirmar" onClick={onNovoAgendamento}>
+          FAZER OUTRO AGENDAMENTO
+        </button>
+      )}
     </div>
   )
 }

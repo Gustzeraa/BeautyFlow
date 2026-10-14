@@ -1,6 +1,5 @@
-# Coloque no app da API (ao lado do views.py atual)
 from django.utils import timezone
-from rest_framework import permissions, status, viewsets, mixins
+from rest_framework import mixins, permissions, status, viewsets
 from rest_framework.authentication import TokenAuthentication
 from rest_framework.response import Response
 
@@ -46,3 +45,19 @@ class AgendamentoAdminViewSet(SomenteDonaMixin, mixins.DestroyModelMixin, viewse
         if ate:
             qs = qs.filter(data_hora_inicio__date__lte=ate)
         return qs
+
+    def destroy(self, request, *args, **kwargs):
+        agendamento = self.get_object()
+
+        if agendamento.pacote:
+            # Combo: cancela todas as sessões que ainda não aconteceram.
+            # As que já foram feitas ficam no histórico.
+            sessoes = Agendamento.objects.filter(
+                pacote=agendamento.pacote, data_hora_inicio__gte=timezone.now()
+            )
+        else:
+            sessoes = Agendamento.objects.filter(pk=agendamento.pk)
+
+        ids = list(sessoes.values_list("id", flat=True))
+        sessoes.delete()
+        return Response({"cancelados": ids}, status=status.HTTP_200_OK)

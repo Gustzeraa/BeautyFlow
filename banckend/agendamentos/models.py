@@ -8,6 +8,11 @@ class Servico(models.Model):
     nome = models.CharField(max_length=100)
     preco = models.DecimalField(max_digits=6, decimal_places=2)
     duracao_minutos = models.IntegerField(help_text="Duração em minutos (ex: 180 para 3h)")
+    # Combo: 1 = serviço avulso. 2 ou mais = pacote com várias sessões
+    sessoes = models.PositiveSmallIntegerField(default=1, help_text="Quantidade de sessões do combo")
+    intervalo_dias = models.PositiveSmallIntegerField(
+        default=0, help_text="Dias entre uma sessão e outra (ex: 15 para quinzenal)"
+    )
 
     def __str__(self):
         return self.nome
@@ -40,6 +45,9 @@ class Agendamento(models.Model):
     servico = models.ForeignKey(Servico, on_delete=models.CASCADE)
     data_hora_inicio = models.DateTimeField()
     data_hora_fim = models.DateTimeField(blank=True, null=True)
+    # Sessões do mesmo combo compartilham o mesmo 'pacote'
+    pacote = models.UUIDField(null=True, blank=True, db_index=True)
+    sessao_numero = models.PositiveSmallIntegerField(default=1)
 
     def save(self, *args, **kwargs):
         if self.data_hora_inicio and self.servico:

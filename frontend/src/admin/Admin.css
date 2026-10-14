@@ -29,14 +29,20 @@
   box-shadow: 0 2px 8px rgba(212, 106, 122, 0.18);
 }
 
-/* Pontinho nos dias com agendamento */
-.day-btn { position: relative; }
-.day-btn.has-event::after {
-  content: ''; position: absolute; bottom: 3px; left: 50%;
-  width: 5px; height: 5px; border-radius: 50%;
-  transform: translateX(-50%); background: var(--rosa-botao);
+/* Dias com agendamento: bolinha no rosa clarinho do cabeçalho */
+.day-btn.has-event {
+  background-color: var(--rosa-fundo);
+  color: var(--rosa-botao);
+  font-weight: 700;
 }
-.day-btn.selected.has-event::after { background: #fff; }
+.day-btn.has-event:hover { background-color: #F8D5DD; }
+
+/* Dia selecionado continua escuro; se tiver agendamento, ganha um anel rosa */
+.day-btn.selected.has-event {
+  background-color: var(--texto-escuro);
+  color: #fff;
+  box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--rosa-fundo);
+}
 
 /* Agenda do dia */
 .agenda-dia-titulo { font-size: 1.05rem; font-weight: 600; color: var(--texto-escuro); }
