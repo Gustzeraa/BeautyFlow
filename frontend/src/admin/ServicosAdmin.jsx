@@ -160,7 +160,7 @@ export default function ServicosAdmin() {
               <div className="input-wrapper">
                 <label htmlFor="srv-nome">Nome do serviço</label>
                 <input
-                  id="srv-nome" className="text-input" placeholder="Alongamento em gel" autoFocus
+                  id="srv-nome" className="text-input" placeholder="Alongamento em gel"
                   value={form.nome} onChange={(e) => setForm({ ...form, nome: e.target.value })}
                 />
               </div>

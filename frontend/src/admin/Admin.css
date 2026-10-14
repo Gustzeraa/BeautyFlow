@@ -103,19 +103,21 @@
 /* Folha que sobe de baixo para criar/editar serviço */
 .sheet-fundo {
   position: fixed; inset: 0; z-index: 50;
-  display: flex; align-items: flex-end; justify-content: center;
+  display: flex; flex-direction: column; align-items: center;
+  overflow-y: auto;               /* se o teclado apertar a tela, dá para rolar */
+  overscroll-behavior: contain;
   background: rgba(51, 51, 51, 0.35);
 }
 .sheet {
   width: 100%; max-width: 460px; background: #fff;
+  margin-top: auto;               /* fica embaixo quando sobra espaço */
   border-radius: 28px 28px 0 0;
   padding: 26px 20px calc(20px + env(safe-area-inset-bottom));
   animation: sheet-sobe 0.22s ease-out;
 }
 .sheet h3 { margin-bottom: 24px; font-size: 1.15rem; color: var(--texto-escuro); }
 @media (min-width: 601px) {
-  .sheet-fundo { align-items: center; }
-  .sheet { border-radius: 28px; }
+  .sheet { margin: auto; border-radius: 28px; }
 }
 @keyframes sheet-sobe { from { transform: translateY(30px); opacity: 0; } to { transform: none; opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .sheet { animation: none; } }
