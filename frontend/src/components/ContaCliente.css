@@ -1,0 +1,75 @@
+/* Cartão de login (mesmo estilo do cartão do calendário) */
+.login-cliente {
+  text-align: center;
+  background: var(--rosa-fundo);
+  border-radius: 20px;
+  padding: 22px 18px;
+  margin-bottom: 10px;
+}
+.login-cliente-titulo {
+  font-weight: 600;
+  font-size: 1.05rem;
+  color: var(--texto-escuro);
+  margin-bottom: 6px;
+}
+.login-cliente-texto {
+  font-size: 0.88rem;
+  color: var(--texto-claro);
+  margin-bottom: 16px;
+}
+.login-cliente-botao {
+  display: flex;
+  justify-content: center;
+  min-height: 44px;
+}
+
+/* Quem está agendando */
+.conta-cliente {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--borda);
+  border-radius: 14px;
+  margin-bottom: 22px;
+}
+.conta-cliente-foto {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+.conta-cliente-inicial {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--rosa-fundo);
+  color: var(--rosa-botao);
+  font-weight: 700;
+}
+.conta-cliente-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.conta-cliente-info span { font-size: 0.75rem; color: var(--texto-claro); }
+.conta-cliente-info strong {
+  font-size: 0.92rem;
+  color: var(--texto-escuro);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.conta-cliente-sair {
+  background: none;
+  border: none;
+  padding: 6px 8px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--rosa-botao);
+  cursor: pointer;
+}
+.conta-cliente-sair:hover { background: var(--rosa-fundo); }

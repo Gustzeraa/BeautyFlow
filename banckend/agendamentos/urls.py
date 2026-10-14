@@ -2,6 +2,7 @@ from django.urls import path, include
 from rest_framework.authtoken.views import obtain_auth_token
 from rest_framework.routers import SimpleRouter
 
+from .auth_views import login_google, meus_agendamentos, minha_conta
 from .views import criar_agendamento, horarios_disponiveis, listar_servicos
 from .views_admin import ServicoAdminViewSet, AgendamentoAdminViewSet
 
@@ -11,10 +12,15 @@ router.register('servicos', ServicoAdminViewSet, basename='admin-servicos')
 router.register('agendamentos', AgendamentoAdminViewSet, basename='admin-agendamentos')
 
 urlpatterns = [
-    # Tela da cliente (sem mudanças)
+    # Tela da cliente
     path('api/horarios-disponiveis/', horarios_disponiveis, name='horarios-disponiveis'),
     path('api/agendar/', criar_agendamento, name='criar-agendamento'),
     path('api/servicos/', listar_servicos, name='listar-servicos'),
+
+    # Login da cliente com Google
+    path('api/auth/google/', login_google, name='login-google'),
+    path('api/minha-conta/', minha_conta, name='minha-conta'),
+    path('api/meus-agendamentos/', meus_agendamentos, name='meus-agendamentos'),
 
     # Painel
     path('api/admin/login/', obtain_auth_token, name='admin-login'),

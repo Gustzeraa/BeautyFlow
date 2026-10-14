@@ -8,7 +8,7 @@ function dataPorExtenso(data) {
   return texto.charAt(0).toUpperCase() + texto.slice(1)
 }
 
-export default function ConfirmacaoAgendamento({ dados, onNovoAgendamento }) {
+export default function ConfirmacaoAgendamento({ dados, onNovoAgendamento, onVerMeusHorarios }) {
   const primeiroNome = dados.nome.trim().split(' ')[0]
 
   return (
@@ -48,8 +48,16 @@ export default function ConfirmacaoAgendamento({ dados, onNovoAgendamento }) {
         <i className="fab fa-whatsapp" /> Se precisar remarcar, é só chamar o studio no WhatsApp.
       </p>
 
-      <button className="btn-confirmar" onClick={onNovoAgendamento}>
-        FAZER OUTRO AGENDAMENTO
+      {onVerMeusHorarios && (
+        <button className="btn-confirmar" onClick={onVerMeusHorarios}>
+          VER MEUS HORÁRIOS
+        </button>
+      )}
+      <button
+        className={onVerMeusHorarios ? 'confirmacao-link' : 'btn-confirmar'}
+        onClick={onNovoAgendamento}
+      >
+        {onVerMeusHorarios ? 'Fazer outro agendamento' : 'FAZER OUTRO AGENDAMENTO'}
       </button>
     </div>
   )

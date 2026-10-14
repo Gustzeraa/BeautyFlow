@@ -1,0 +1,114 @@
+/* Abas da cliente (mesmo estilo de pílula do painel) */
+.abas-cliente {
+  display: flex;
+  margin-top: 16px;
+  padding: 4px;
+  background: rgba(255, 255, 255, 0.55);
+  border-radius: 30px;
+}
+.abas-cliente button {
+  flex: 1;
+  padding: 10px;
+  border: none;
+  border-radius: 26px;
+  background: none;
+  font: inherit;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--texto-claro);
+  cursor: pointer;
+  transition: background-color 0.2s, color 0.2s;
+}
+.abas-cliente button.ativa {
+  background: #fff;
+  color: var(--texto-escuro);
+  box-shadow: 0 2px 8px rgba(212, 106, 122, 0.18);
+}
+
+.meus-titulo {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--texto-escuro);
+  margin-bottom: 14px;
+}
+.meus-titulo-historico { margin-top: 30px; }
+
+.meus-aviso { text-align: center; color: var(--texto-claro); padding: 20px 0; }
+
+.meus-vazio {
+  text-align: center;
+  color: var(--texto-claro);
+  padding: 24px 16px;
+  border: 1px dashed var(--borda);
+  border-radius: 16px;
+}
+.meus-vazio p { margin-bottom: 18px; }
+
+.meus-lista { list-style: none; display: flex; flex-direction: column; gap: 14px; }
+
+.meus-card {
+  display: flex;
+  gap: 14px;
+  padding: 16px;
+  background: #fff;
+  border: 1px solid var(--borda);
+  border-radius: 20px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
+}
+
+/* Bloquinho de data, estilo folha de calendário */
+.meus-data {
+  flex-shrink: 0;
+  width: 56px;
+  height: 60px;
+  border-radius: 14px;
+  background: var(--rosa-fundo);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+.meus-data strong { font-size: 1.4rem; line-height: 1; color: var(--rosa-botao); }
+.meus-data span {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--texto-escuro);
+  margin-top: 4px;
+}
+
+.meus-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.meus-info > strong { font-size: 1rem; color: var(--texto-escuro); }
+.meus-info > span { font-size: 0.88rem; color: var(--texto-claro); }
+.meus-preco { color: var(--rosa-botao); font-weight: 600; }
+
+.meus-remarcar {
+  align-self: flex-start;
+  margin-top: 10px;
+  padding: 8px 14px;
+  border-radius: 20px;
+  background: #E9F9EF;
+  color: #1E8E4E;
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+.meus-remarcar i { color: #25D366; margin-right: 4px; }
+
+.meus-historico { list-style: none; }
+.meus-historico li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 4px;
+  border-bottom: 1px solid #F0F0F0;
+  font-size: 0.9rem;
+  color: var(--texto-claro);
+}
+.meus-historico li:last-child { border-bottom: none; }
+
+.abas-cliente button:focus-visible,
+.meus-remarcar:focus-visible {
+  outline: 2px solid var(--rosa-botao);
+  outline-offset: 2px;
+}

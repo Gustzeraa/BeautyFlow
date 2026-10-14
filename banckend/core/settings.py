@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.1/ref/settings/
 """
 
+import os
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -133,3 +134,9 @@ MAILERS = {
 
 
 CORS_ALLOW_ALL_ORIGINS = True
+
+GOOGLE_CLIENT_ID = os.environ.get(
+    'GOOGLE_CLIENT_ID',
+    '1054316590677-2psoe1hpnt2o6e570on4h6c9mj2n32jt.apps.googleusercontent.com',
+)
+ 

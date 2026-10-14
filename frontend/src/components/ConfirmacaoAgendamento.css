@@ -86,3 +86,15 @@
   margin-bottom: 24px;
 }
 .confirmacao-aviso i { color: #25D366; margin-right: 4px; }
+
+.confirmacao-link {
+  width: 100%;
+  margin-top: 8px;
+  padding: 14px;
+  border: none;
+  background: none;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--texto-claro);
+  cursor: pointer;
+}

@@ -2,7 +2,9 @@ from datetime import datetime, timedelta, time
 
 from django.db import transaction
 from django.utils import timezone
-from rest_framework.decorators import api_view
+from rest_framework.authentication import TokenAuthentication
+from rest_framework.decorators import api_view, authentication_classes, permission_classes
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from .models import Servico, Agendamento
@@ -68,6 +70,8 @@ def horarios_disponiveis(request):
 
 
 @api_view(['POST'])
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated])  # só cliente logada com o Google consegue agendar
 def criar_agendamento(request):
     data_str = request.data.get('data')         # Ex: '2026-10-15'
     hora_str = request.data.get('hora')         # Ex: '12:30'
@@ -114,11 +118,18 @@ def criar_agendamento(request):
             )
 
         Agendamento.objects.create(
+            cliente=request.user,
             nome_cliente=nome_cliente,
             whatsapp=whatsapp,
             servico=servico,
             data_hora_inicio=inicio,
         )
+
+    # Guarda o WhatsApp no perfil para já vir preenchido no próximo agendamento
+    perfil = getattr(request.user, 'perfil_cliente', None)
+    if perfil and perfil.whatsapp != whatsapp:
+        perfil.whatsapp = whatsapp
+        perfil.save(update_fields=['whatsapp'])
 
     return Response({'mensagem': 'Agendamento confirmado com sucesso!'}, status=201)
 
