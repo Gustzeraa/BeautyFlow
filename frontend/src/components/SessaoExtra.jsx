@@ -3,11 +3,19 @@ import axios from 'axios'
 import { toISO } from './Calendario'
 import { API_URL, DIAS_FECHADOS } from '../config'
 
-const FOLGA_DIAS = 1 // igual ao FOLGA_COMBO_DIAS do Django
+const FOLGA_ANTES = 1 // igual ao FOLGA_COMBO_ANTES do Django
+const FOLGA_DIAS = 1  // igual ao FOLGA_COMBO_DIAS do Django
 
 function somarDias(data, dias) {
   const d = new Date(data)
   d.setDate(d.getDate() + dias)
+  return d
+}
+
+// Se cair num dia fechado (domingo), volta para o dia aberto anterior (sábado)
+function diaAbertoAnterior(data) {
+  let d = new Date(data)
+  while (DIAS_FECHADOS.includes(d.getDay())) d = somarDias(d, -1)
   return d
 }
 
@@ -25,11 +33,15 @@ function dataCurta(data) {
 
 // Escolha do horário de uma sessão seguinte do combo (2ª, 3ª...)
 export default function SessaoExtra({ numero, dataSugerida, horaPreferida, servicoId, onChange }) {
-  // Opções de data: a data do combo (ou o próximo dia aberto) + a folga para frente
-  const opcoes = [proximoDiaAberto(dataSugerida)]
+  // Opções de data: dia anterior + data do combo (ou o próximo dia aberto) + dia seguinte.
+  // Domingo nunca entra: o anterior pula para sábado, o seguinte pula para segunda.
+  const base = proximoDiaAberto(dataSugerida)
+  const opcoes = [base]
+  for (let i = 0; i < FOLGA_ANTES; i++) opcoes.unshift(diaAbertoAnterior(somarDias(opcoes[0], -1)))
   for (let i = 0; i < FOLGA_DIAS; i++) opcoes.push(proximoDiaAberto(somarDias(opcoes[opcoes.length - 1], 1)))
+  const indiceBase = FOLGA_ANTES
 
-  const [escolha, setEscolha] = useState(0)
+  const [escolha, setEscolha] = useState(indiceBase) // começa na data do combo
   const [horarios, setHorarios] = useState([])
   const [hora, setHora] = useState(null)
   const [carregando, setCarregando] = useState(true)
@@ -77,7 +89,7 @@ export default function SessaoExtra({ numero, dataSugerida, horaPreferida, servi
               onClick={() => setEscolha(i)}
             >
               <strong>{dataCurta(op)}</strong>
-              <span>{i === 0 ? 'data do combo' : 'dia seguinte'}</span>
+              <span>{i === indiceBase ? 'data do combo' : i < indiceBase ? 'antes' : 'depois'}</span>
             </button>
           ))}
         </div>
@@ -99,7 +111,7 @@ export default function SessaoExtra({ numero, dataSugerida, horaPreferida, servi
         ) : (
           <p style={{ gridColumn: '1/-1', textAlign: 'center', color: '#888' }}>
             Sem horários livres neste dia.
-            {escolha < opcoes.length - 1 ? ' Tente o dia seguinte.' : ' Fale com o studio pelo WhatsApp.'}
+            {' Tente outro dos dias acima.'}
           </p>
         )}
       </div>

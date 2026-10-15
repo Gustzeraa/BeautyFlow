@@ -3,7 +3,7 @@ import adminApi, { duracaoTexto, mensagemErro, moeda } from './adminApi'
 
 const VAZIO = { id: null, nome: '', preco: '', duracao: 60, sessoes: 1, intervalo: 15 }
 const INTERVALOS = [7, 15, 21, 30]
-const DURACOES = Array.from({ length: 24 }, (_, i) => (i + 1) * 15) // 15 min até 6h
+const DURACOES = Array.from({ length: 12 }, (_, i) => (i + 1) * 30) // 30 min, 1h, 1h30 ... até 6h
 
 // Aceita "45", "45,90", "1.250,00" ou "45.90"
 function lerPreco(texto) {
@@ -160,7 +160,7 @@ export default function ServicosAdmin() {
               <div className="input-wrapper">
                 <label htmlFor="srv-nome">Nome do serviço</label>
                 <input
-                  id="srv-nome" className="text-input" placeholder="Alongamento em gel"
+                  id="srv-nome" className="text-input" placeholder="Alongamento em gel" autoFocus
                   value={form.nome} onChange={(e) => setForm({ ...form, nome: e.target.value })}
                 />
               </div>

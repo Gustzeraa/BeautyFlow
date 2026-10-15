@@ -16,7 +16,11 @@ User = get_user_model()
 
 
 def dados_cliente(usuario, perfil):
-    # Agendamento ainda não concluído (regra de um agendamento por vez)
+    from .views import MAX_AGENDAMENTOS_ATIVOS, agendamentos_ativos, meses_ocupados
+
+    ativos = agendamentos_ativos(usuario)
+
+    # Próximo agendamento ainda não concluído (para mostrar no aviso)
     ativo = (
         Agendamento.objects.filter(cliente=usuario, data_hora_fim__gt=timezone.now())
         .select_related('servico')
@@ -32,6 +36,9 @@ def dados_cliente(usuario, perfil):
             'servico': ativo.servico.nome,
             'inicio': ativo.data_hora_inicio,
         } if ativo else None,
+        'total_ativos': len(ativos),
+        'meses_ocupados': [f'{ano}-{mes:02d}' for ano, mes in meses_ocupados(ativos)],  # 'YYYY-MM'
+        'max_ativos': MAX_AGENDAMENTOS_ATIVOS,
     }
 
 

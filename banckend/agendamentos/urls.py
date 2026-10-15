@@ -3,7 +3,7 @@ from rest_framework.authtoken.views import obtain_auth_token
 from rest_framework.routers import SimpleRouter
 
 from .auth_views import login_google, meus_agendamentos, minha_conta
-from .views import criar_agendamento, horarios_disponiveis, listar_servicos
+from .views import criar_agendamento, criar_agendamento_admin, horarios_disponiveis, listar_servicos
 from .views_admin import ServicoAdminViewSet, AgendamentoAdminViewSet
 
 # Rotas do painel da dona
@@ -24,5 +24,6 @@ urlpatterns = [
 
     # Painel
     path('api/admin/login/', obtain_auth_token, name='admin-login'),
+    path('api/admin/agendar/', criar_agendamento_admin, name='admin-agendar'),
     path('api/admin/', include(router.urls)),
 ]

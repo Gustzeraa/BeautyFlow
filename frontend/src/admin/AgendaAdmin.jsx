@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from 'react'
 import Calendario, { toISO } from '../components/Calendario'
 import adminApi, { hora, mensagemErro, moeda } from './adminApi'
 import '../components/SessaoExtra.css'
+import NovoAgendamentoAdmin from './NovoAgendamentoAdmin'
+import { DIAS_FECHADOS } from '../config'
 
 function tituloDoDia(data) {
   const iso = toISO(data)
@@ -32,6 +34,8 @@ export default function AgendaAdmin() {
   const [cancelando, setCancelando] = useState(false)
   const [erroCancelar, setErroCancelar] = useState('')
   const [aviso, setAviso] = useState('')
+  const [novoAberto, setNovoAberto] = useState(false)
+  const [recarregar, setRecarregar] = useState(0)
 
   // Busca o mês inteiro de uma vez: serve para os pontinhos e para a lista do dia
   useEffect(() => {
@@ -50,7 +54,7 @@ export default function AgendaAdmin() {
       .finally(() => !cancelado && setCarregando(false))
 
     return () => { cancelado = true }
-  }, [mesAtual])
+  }, [mesAtual, recarregar])
 
   const diasMarcados = useMemo(
     () => new Set(agendamentos.map((a) => toISO(new Date(a.data_hora_inicio)))),
@@ -97,6 +101,10 @@ export default function AgendaAdmin() {
     }
   }
 
+  // Só dá para marcar em dia aberto, de hoje em diante
+  const podeMarcar =
+    toISO(dataSelecionada) >= toISO(new Date()) && !DIAS_FECHADOS.includes(dataSelecionada.getDay())
+
   function mudarMes(delta) {
     setMesAtual(new Date(mesAtual.getFullYear(), mesAtual.getMonth() + delta, 1))
   }
@@ -112,7 +120,14 @@ export default function AgendaAdmin() {
         diasMarcados={diasMarcados}
       />
 
-      <h3 className="agenda-dia-titulo">{tituloDoDia(dataSelecionada)}</h3>
+      <div className="agenda-dia-topo">
+        <h3 className="agenda-dia-titulo">{tituloDoDia(dataSelecionada)}</h3>
+        {podeMarcar && (
+          <button className="btn-marcar" onClick={() => { setAviso(''); setNovoAberto(true) }}>
+            <i className="fas fa-plus" /> Marcar
+          </button>
+        )}
+      </div>
 
       {aviso && <p className="admin-sucesso" role="status">{aviso}</p>}
 
@@ -147,6 +162,7 @@ export default function AgendaAdmin() {
                   </span>
                 </div>
                 <div className="agenda-acoes">
+                  {a.whatsapp && (
                   <a
                     className="agenda-whats"
                     href={linkWhatsApp(a.whatsapp)}
@@ -156,6 +172,7 @@ export default function AgendaAdmin() {
                   >
                     <i className="fab fa-whatsapp" />
                   </a>
+                  )}
                   {new Date(a.data_hora_inicio) > new Date() && (
                     <button
                       className="agenda-cancelar"
@@ -170,6 +187,18 @@ export default function AgendaAdmin() {
             ))}
           </ul>
         </>
+      )}
+
+      {novoAberto && (
+        <NovoAgendamentoAdmin
+          data={dataSelecionada}
+          onFechar={() => setNovoAberto(false)}
+          onCriado={(nome) => {
+            setNovoAberto(false)
+            setAviso(`Horário de ${nome} marcado.`)
+            setRecarregar((n) => n + 1)
+          }}
+        />
       )}
 
       {paraCancelar && (

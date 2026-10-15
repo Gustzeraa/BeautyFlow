@@ -115,6 +115,21 @@ function App() {
     return () => document.removeEventListener('visibilitychange', aoVoltar)
   }, [])
 
+  // Se o mês escolhido já tem horário, leva o calendário para o próximo mês livre
+  const ocupadosChave = (sessao?.cliente?.meses_ocupados || []).join(',')
+  useEffect(() => {
+    const ocupados = ocupadosChave ? ocupadosChave.split(',') : []
+    if (!ocupados.includes(toISO(dataSelecionada).slice(0, 7))) return
+    const d = new Date(dataSelecionada)
+    d.setDate(1)
+    while (ocupados.includes(toISO(d).slice(0, 7))) d.setMonth(d.getMonth() + 1)
+    const hojeZero = new Date(new Date().setHours(0, 0, 0, 0))
+    if (d < hojeZero) d.setTime(hojeZero.getTime())
+    while (DIAS_FECHADOS.includes(d.getDay())) d.setDate(d.getDate() + 1)
+    setMesAtual(new Date(d.getFullYear(), d.getMonth(), 1))
+    setDataSelecionada(d)
+  }, [ocupadosChave])
+
   // 1. Busca os serviços ao carregar a página
   useEffect(() => {
     const buscarServicos = async () => {
@@ -160,6 +175,14 @@ function App() {
 
   // Regra de um agendamento por vez
   const agendamentoAtivo = sessao?.cliente?.agendamento_ativo || null
+  // Um agendamento por mês, podendo deixar vários meses marcados (até max_ativos)
+  const totalAtivos = sessao?.cliente?.total_ativos ?? (agendamentoAtivo ? 1 : 0)
+  const maxAtivos = sessao?.cliente?.max_ativos ?? 1
+  const mesesOcupados = sessao?.cliente?.meses_ocupados || [] // ['YYYY-MM']
+  const bloqueado = Boolean(agendamentoAtivo) && totalAtivos >= maxAtivos
+  const nomesMesesOcupados = mesesOcupados
+    .map((m) => isoParaData(`${m}-01`).toLocaleDateString('pt-BR', { month: 'long' }))
+    .join(', ')
 
   // Combo: serviço com mais de uma sessão
   const totalSessoes = servicoSelecionadoObj?.sessoes || 1
@@ -212,11 +235,13 @@ function App() {
         cliente: {
           ...sessao.cliente,
           whatsapp: digitosWhats,
-          agendamento_ativo: { servico: servicoSelecionadoObj?.nome ?? '', inicio: inicio.toISOString() },
+          agendamento_ativo: sessao.cliente.agendamento_ativo ||
+            { servico: servicoSelecionadoObj?.nome ?? '', inicio: inicio.toISOString() },
         },
       }
       salvarSessao(atualizada)
       setSessao(atualizada)
+      setRecarregar((n) => n + 1) // busca a situação atualizada da conta (meses ocupados etc.)
 
       setConfirmado({
         nome: nome.trim(),
@@ -306,12 +331,21 @@ function App() {
         ) : (
           <>
             {/* CALENDÁRIO (componente compartilhado com o painel) */}
+            {/* Já tem horário: pode deixar outros meses marcados, um por mês */}
+            {mesesOcupados.length > 0 && !bloqueado && (
+              <p className="combo-info">
+                <strong>Você já tem horário em {nomesMesesOcupados}.</strong>{' '}
+                Quer deixar os próximos garantidos?
+              </p>
+            )}
+
             <Calendario
               mesAtual={mesAtual}
               onMudarMes={mudarMes}
               dataSelecionada={dataSelecionada}
               onSelecionar={setDataSelecionada}
               diasFechados={DIAS_FECHADOS}
+              mesesBloqueados={mesesOcupados}
             />
 
             {/* SERVIÇO (vem antes dos horários, porque a duração muda os horários livres) */}
@@ -361,16 +395,16 @@ function App() {
             </div>
 
             {/* UM AGENDAMENTO POR VEZ: cliente com horário em andamento não marca outro */}
-            {agendamentoAtivo ? (
+            {bloqueado ? (
               <div className="aviso-ativo">
-                <p className="aviso-ativo-titulo">Você já tem um horário marcado</p>
+                <p className="aviso-ativo-titulo">Você já tem {totalAtivos} horários marcados</p>
                 <div className="aviso-ativo-horario">
                   <strong>{agendamentoAtivo.servico}</strong>
                   {new Date(agendamentoAtivo.inicio).toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })},
                   {' às '}{new Date(agendamentoAtivo.inicio).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                 </div>
                 <p className="aviso-ativo-texto">
-                  Assim que ele for concluído, você pode marcar o próximo por aqui.
+                  Esse é o máximo por enquanto. Assim que um deles for concluído, você pode marcar outro por aqui.
                 </p>
                 <button className="btn-confirmar" onClick={() => setAba('meus')}>VER MEUS HORÁRIOS</button>
               </div>
@@ -382,7 +416,7 @@ function App() {
                 <h3 className="combo-titulo">Próximas sessões do combo</h3>
                 <p className="combo-texto">
                   A próxima sessão é {intervaloDias} dias depois, no mesmo horário (se cair no domingo, vai para segunda).
-                  Se o horário não estiver livre, você pode passar para o dia seguinte.
+                  Se o horário não estiver livre, você pode escolher um dia antes ou um dia depois.
                 </p>
                 {numerosExtras.map((n) => (
                   <SessaoExtra

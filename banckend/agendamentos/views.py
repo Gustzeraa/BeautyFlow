@@ -5,7 +5,7 @@ from django.db import transaction
 from django.utils import timezone
 from rest_framework.authentication import TokenAuthentication
 from rest_framework.decorators import api_view, authentication_classes, permission_classes
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
 
 from .models import Servico, Agendamento
@@ -16,8 +16,44 @@ from .models import Servico, Agendamento
 SEMANA = {'abertura': time(8, 0), 'fechamento': time(19, 0), 'almoco': (time(12, 0), time(13, 0))}
 SABADO = {'abertura': time(7, 0), 'fechamento': time(16, 0), 'almoco': (time(12, 0), time(13, 0))}
 EXPEDIENTE = {0: SEMANA, 1: SEMANA, 2: SEMANA, 3: SEMANA, 4: SEMANA, 5: SABADO}
-INTERVALO_MINUTOS = 30    # de quanto em quanto tempo os horários aparecem
-FOLGA_COMBO_DIAS = 1      # combo: a cliente pode passar a sessão para o próximo dia aberto (0 = sem folga)
+# De quanto em quanto tempo os horários aparecem: de hora em hora quando todos os
+# serviços têm duração em horas cheias; de 30 em 30 se algum tiver meia hora (ex: 1h30)
+INTERVALO_HORA_CHEIA = 60
+INTERVALO_MEIA_HORA = 30
+
+
+def intervalo_da_agenda():
+    duracoes = list(Servico.objects.values_list('duracao_minutos', flat=True))
+    if all(d % 60 == 0 for d in duracoes):
+        return INTERVALO_HORA_CHEIA
+    return INTERVALO_MEIA_HORA
+
+MAX_AGENDAMENTOS_ATIVOS = 4  # cliente pode deixar até 4 meses marcados, um por mês (combo conta como um só)
+FOLGA_COMBO_ANTES = 1     # combo: pode adiantar a sessão para o dia aberto anterior (0 = não)
+FOLGA_COMBO_DIAS = 1      # combo: pode passar a sessão para o próximo dia aberto (0 = não)
+
+
+MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho',
+         'agosto', 'setembro', 'outubro', 'novembro', 'dezembro']
+
+
+def agendamentos_ativos(cliente):
+    """
+    Agendamentos da cliente que ainda não terminaram, agrupados:
+    as sessões de um combo contam como um agendamento só.
+    Retorna uma lista de datas/horas de início (da 1ª sessão), em ordem.
+    """
+    inicios = {}
+    for ag in Agendamento.objects.filter(cliente=cliente, data_hora_fim__gt=timezone.now()):
+        chave = ag.pacote or ag.id
+        if chave not in inicios or ag.data_hora_inicio < inicios[chave]:
+            inicios[chave] = ag.data_hora_inicio
+    return sorted(inicios.values())
+
+
+def meses_ocupados(ativos):
+    """Meses (ano, mês) em que a cliente já tem agendamento."""
+    return sorted({(timezone.localtime(i).year, timezone.localtime(i).month) for i in ativos})
 
 
 def proximo_dia_aberto(dia):
@@ -27,10 +63,19 @@ def proximo_dia_aberto(dia):
     return dia
 
 
+def dia_aberto_anterior(dia):
+    """Volta até o dia aberto mais próximo (ex: domingo vira sábado)."""
+    while dia.weekday() not in EXPEDIENTE:
+        dia -= timedelta(days=1)
+    return dia
+
+
 def datas_permitidas_combo(primeira, intervalo_dias, numero_sessao):
     """Datas aceitas para a sessão N do combo: a data exata (ou o próximo dia aberto) + a folga."""
     base = proximo_dia_aberto(primeira + timedelta(days=intervalo_dias * (numero_sessao - 1)))
     permitidas = [base]
+    for _ in range(FOLGA_COMBO_ANTES):
+        permitidas.insert(0, dia_aberto_anterior(permitidas[0] - timedelta(days=1)))
     for _ in range(FOLGA_COMBO_DIAS):
         permitidas.append(proximo_dia_aberto(permitidas[-1] + timedelta(days=1)))
     return permitidas
@@ -47,6 +92,37 @@ def bate_no_almoco(inicio, fim, expediente):
     dia = timezone.localtime(inicio).date()
     almoco_inicio, almoco_fim = expediente['almoco']
     return inicio < no_dia(dia, almoco_fim) and fim > no_dia(dia, almoco_inicio)
+
+
+def blocos_ocupados(dia, expediente, agendamentos):
+    """Intervalos em que não dá para atender: almoço + agendamentos do dia."""
+    blocos = []
+    if expediente.get('almoco'):
+        almoco_inicio, almoco_fim = expediente['almoco']
+        blocos.append((no_dia(dia, almoco_inicio), no_dia(dia, almoco_fim)))
+    for ag in agendamentos:
+        fim = ag.data_hora_fim or (ag.data_hora_inicio + timedelta(minutes=ag.servico.duracao_minutos))
+        blocos.append((ag.data_hora_inicio, fim))
+    return blocos
+
+
+def deixa_buraco(inicio, fim, dia, expediente, blocos, agora, menor_servico):
+    """
+    True se esse horário deixa um vão antes ou depois menor que o serviço mais curto
+    (tempo que ninguém conseguiria usar). Horários "encostados" em algo (abertura,
+    almoço, outro atendimento, fechamento) sempre podem, para nunca sumir com uma vaga.
+    """
+    limite_antes = max([no_dia(dia, expediente['abertura'])] + [b[1] for b in blocos if b[1] <= inicio])
+    limite_depois = min([no_dia(dia, expediente['fechamento'])] + [b[0] for b in blocos if b[0] >= fim])
+
+    vao_antes = inicio - limite_antes
+    vao_depois = limite_depois - fim
+    if agora > limite_antes:
+        vao_antes = timedelta(0)  # hoje: o tempo que já passou não conta como desperdício
+
+    if vao_antes == timedelta(0) or vao_depois == timedelta(0):
+        return False  # encostado de pelo menos um lado
+    return vao_antes < menor_servico or vao_depois < menor_servico
 
 
 def tem_conflito(inicio, fim, agendamentos):
@@ -85,17 +161,21 @@ def horarios_disponiveis(request):
 
     agora = timezone.now()
     duracao = timedelta(minutes=servico.duracao_minutos)
+    passo = timedelta(minutes=intervalo_da_agenda())
+    menor_minutos = Servico.objects.order_by('duracao_minutos').values_list('duracao_minutos', flat=True).first()
+    menor_servico = timedelta(minutes=menor_minutos or servico.duracao_minutos)
 
     # Agendamentos já marcados para aquele dia
     agendamentos_do_dia = list(
         Agendamento.objects.filter(data_hora_inicio__date=data_busca).select_related('servico')
     )
+    blocos = blocos_ocupados(data_busca, expediente, agendamentos_do_dia)
 
     horarios_livres = []
     hora_atual = no_dia(data_busca, expediente['abertura'])
     hora_final_expediente = no_dia(data_busca, expediente['fechamento'])
 
-    # Varre o dia de 30 em 30 minutos
+    # Varre o dia de hora em hora (ou de 30 em 30, se algum serviço tiver meia hora)
     while hora_atual + duracao <= hora_final_expediente:
         fim_previsto = hora_atual + duracao
 
@@ -104,10 +184,12 @@ def horarios_disponiveis(request):
             hora_atual > agora
             and not bate_no_almoco(hora_atual, fim_previsto, expediente)
             and not tem_conflito(hora_atual, fim_previsto, agendamentos_do_dia)
+            # Esconde horários que deixariam um vão pequeno demais para qualquer serviço
+            and not deixa_buraco(hora_atual, fim_previsto, data_busca, expediente, blocos, agora, menor_servico)
         ):
             horarios_livres.append(timezone.localtime(hora_atual).strftime('%H:%M'))
 
-        hora_atual += timedelta(minutes=INTERVALO_MINUTOS)
+        hora_atual += passo
 
     return Response({
         'data': data_str,
@@ -136,20 +218,24 @@ def montar_inicio(data_str, hora_str):
     return timezone.make_aware(datetime.strptime(f"{data_str} {hora_str}", '%Y-%m-%d %H:%M'))
 
 
-@api_view(['POST'])
-@authentication_classes([TokenAuthentication])
-@permission_classes([IsAuthenticated])  # só cliente logada com o Google consegue agendar
-def criar_agendamento(request):
-    data_str = request.data.get('data')         # Ex: '2026-10-15'
-    hora_str = request.data.get('hora')         # Ex: '12:30'
-    servico_id = request.data.get('servico_id')
-    nome_cliente = (request.data.get('nome_cliente') or '').strip()
-    whatsapp = ''.join(c for c in str(request.data.get('whatsapp') or '') if c.isdigit())
-    sessoes_extras = request.data.get('sessoes_extras') or []  # combo: [{data, hora}, ...]
+def reservar(dados, cliente=None, pelo_studio=False):
+    """
+    Lógica de agendamento usada pela tela da cliente e pelo painel da dona.
+    - cliente: usuário logado com o Google (None quando a dona marca pelo painel)
+    - pelo_studio: True quando é a dona marcando (WhatsApp vira opcional e
+      não se aplica a regra de um agendamento por vez)
+    """
+    data_str = dados.get('data')         # Ex: '2026-10-15'
+    hora_str = dados.get('hora')         # Ex: '12:30'
+    servico_id = dados.get('servico_id')
+    nome_cliente = (dados.get('nome_cliente') or '').strip()
+    whatsapp = ''.join(c for c in str(dados.get('whatsapp') or '') if c.isdigit())
+    sessoes_extras = dados.get('sessoes_extras') or []  # combo: [{data, hora}, ...]
 
     if not all([data_str, hora_str, servico_id, nome_cliente]):
         return Response({'erro': 'Preencha todos os campos.'}, status=400)
-    if len(whatsapp) not in (10, 11):
+    whatsapp_obrigatorio = not pelo_studio
+    if (whatsapp or whatsapp_obrigatorio) and len(whatsapp) not in (10, 11):
         return Response({'erro': 'Digite o WhatsApp completo, com DDD.'}, status=400)
 
     try:
@@ -164,13 +250,13 @@ def criar_agendamento(request):
     if len(inicios) != max(servico.sessoes, 1):
         return Response({'erro': f'Esse serviço tem {servico.sessoes} sessões. Escolha o horário de todas.'}, status=400)
 
-    # Cada sessão seguinte cai no intervalo exato (ex: 15 dias depois); domingo vira segunda
+    # Cada sessão seguinte cai no intervalo combinado (com a folga antes/depois, sem domingo)
     primeira = timezone.localtime(inicios[0]).date()
     for i, inicio in enumerate(inicios[1:], start=2):
         permitidas = datas_permitidas_combo(primeira, servico.intervalo_dias, i)
         if timezone.localtime(inicio).date() not in permitidas:
-            opcoes = ' ou '.join(d.strftime('%d/%m') for d in permitidas)
-            return Response({'erro': f'A {i}ª sessão do combo precisa ser em {opcoes}.'}, status=400)
+            opcoes = ', '.join(d.strftime('%d/%m') for d in permitidas)
+            return Response({'erro': f'A {i}ª sessão do combo precisa ser em um destes dias: {opcoes}.'}, status=400)
 
     duracao = timedelta(minutes=servico.duracao_minutos)
     for i, inicio in enumerate(inicios):
@@ -179,19 +265,23 @@ def criar_agendamento(request):
             sessao = f'O horário da {i + 1}ª sessão' if len(inicios) > 1 else 'Esse horário'
             return Response({'erro': f'{sessao} {problema}. Escolha outro.'}, status=400)
 
-    # Regra do studio: um agendamento por vez. Só marca outro depois que o atual for concluído
-    ativo = (
-        Agendamento.objects.filter(cliente=request.user, data_hora_fim__gt=timezone.now())
-        .order_by('data_hora_inicio')
-        .first()
-    )
-    if ativo:
-        quando = timezone.localtime(ativo.data_hora_inicio).strftime('%d/%m às %H:%M')
-        return Response(
-            {'erro': f'Você já tem um horário marcado ({quando}). '
-                     'Assim que ele for concluído, você pode marcar o próximo.'},
-            status=409,
-        )
+    # Regra do studio (só para quem marca pelo app): um agendamento por mês,
+    # podendo deixar vários meses marcados (até MAX_AGENDAMENTOS_ATIVOS)
+    if cliente is not None:
+        ativos = agendamentos_ativos(cliente)
+        if len(ativos) >= MAX_AGENDAMENTOS_ATIVOS:
+            return Response(
+                {'erro': f'Você já tem {len(ativos)} horários marcados, que é o máximo. '
+                         'Assim que um deles for concluído, você pode marcar outro.'},
+                status=409,
+            )
+        novo = timezone.localtime(inicios[0])
+        if (novo.year, novo.month) in meses_ocupados(ativos):
+            return Response(
+                {'erro': f'Você já tem horário marcado em {MESES[novo.month - 1]}. '
+                         'Escolha um dia em outro mês.'},
+                status=409,
+            )
 
     pacote = uuid.uuid4() if len(inicios) > 1 else None
 
@@ -206,13 +296,13 @@ def criar_agendamento(request):
             if tem_conflito(inicio, inicio + duracao, agendamentos_do_dia):
                 sessao = f'O horário da {i + 1}ª sessão' if len(inicios) > 1 else 'Esse horário'
                 return Response(
-                    {'erro': f'{sessao} acabou de ser reservado por outra cliente. Escolha outro.'},
+                    {'erro': f'{sessao} acabou de ser reservado. Escolha outro.'},
                     status=409,
                 )
 
         for i, inicio in enumerate(inicios):
             Agendamento.objects.create(
-                cliente=request.user,
+                cliente=cliente,
                 nome_cliente=nome_cliente,
                 whatsapp=whatsapp,
                 servico=servico,
@@ -221,13 +311,28 @@ def criar_agendamento(request):
                 sessao_numero=i + 1,
             )
 
-    # Guarda o WhatsApp no perfil para já vir preenchido no próximo agendamento
-    perfil = getattr(request.user, 'perfil_cliente', None)
-    if perfil and perfil.whatsapp != whatsapp:
+    # Guarda o WhatsApp no perfil da cliente para já vir preenchido no próximo agendamento
+    perfil = getattr(cliente, 'perfil_cliente', None) if cliente else None
+    if perfil and whatsapp and perfil.whatsapp != whatsapp:
         perfil.whatsapp = whatsapp
         perfil.save(update_fields=['whatsapp'])
 
     return Response({'mensagem': 'Agendamento confirmado com sucesso!'}, status=201)
+
+
+@api_view(['POST'])
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated])  # só cliente logada com o Google consegue agendar
+def criar_agendamento(request):
+    return reservar(request.data, cliente=request.user)
+
+
+@api_view(['POST'])
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAdminUser])  # só a dona, pelo painel
+def criar_agendamento_admin(request):
+    """A dona marca para clientes que não usam o app (sem conta Google)."""
+    return reservar(request.data, cliente=None, pelo_studio=True)
 
 
 @api_view(['GET'])
