@@ -6,11 +6,12 @@ from google.auth.transport import requests as google_requests
 from google.oauth2 import id_token
 from rest_framework.authentication import TokenAuthentication
 from rest_framework.authtoken.models import Token
-from rest_framework.decorators import api_view, authentication_classes, permission_classes
+from rest_framework.decorators import api_view, authentication_classes, permission_classes, throttle_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from .models import Agendamento, PerfilCliente
+from .throttles import LoginThrottle
 
 User = get_user_model()
 
@@ -45,6 +46,7 @@ def dados_cliente(usuario, perfil):
 @api_view(['POST'])
 @authentication_classes([])
 @permission_classes([])
+@throttle_classes([LoginThrottle])
 def login_google(request):
     """Recebe o 'credential' do botão do Google, confere com o Google e devolve o token."""
     credential = request.data.get('credential')

@@ -4,11 +4,12 @@ from datetime import datetime, timedelta, time
 from django.db import transaction
 from django.utils import timezone
 from rest_framework.authentication import TokenAuthentication
-from rest_framework.decorators import api_view, authentication_classes, permission_classes
+from rest_framework.decorators import api_view, authentication_classes, permission_classes, throttle_classes
 from rest_framework.permissions import IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
 
 from .models import Servico, Agendamento
+from .throttles import AgendarThrottle
 
 # Horário de funcionamento do salão
 # Expediente por dia da semana (0 = segunda ... 5 = sábado, 6 = domingo).
@@ -234,6 +235,10 @@ def reservar(dados, cliente=None, pelo_studio=False):
 
     if not all([data_str, hora_str, servico_id, nome_cliente]):
         return Response({'erro': 'Preencha todos os campos.'}, status=400)
+    if len(nome_cliente) > 100:
+        return Response({'erro': 'Nome muito longo (máximo de 100 caracteres).'}, status=400)
+    if not isinstance(sessoes_extras, list) or len(sessoes_extras) > 10:
+        return Response({'erro': 'Sessões do combo inválidas.'}, status=400)
     whatsapp_obrigatorio = not pelo_studio
     if (whatsapp or whatsapp_obrigatorio) and len(whatsapp) not in (10, 11):
         return Response({'erro': 'Digite o WhatsApp completo, com DDD.'}, status=400)
@@ -323,6 +328,7 @@ def reservar(dados, cliente=None, pelo_studio=False):
 @api_view(['POST'])
 @authentication_classes([TokenAuthentication])
 @permission_classes([IsAuthenticated])  # só cliente logada com o Google consegue agendar
+@throttle_classes([AgendarThrottle])
 def criar_agendamento(request):
     return reservar(request.data, cliente=request.user)
 

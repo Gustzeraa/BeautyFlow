@@ -258,6 +258,9 @@ function App() {
       })
       window.scrollTo({ top: 0 })
     } catch (error) {
+      if (error.response?.status === 429) {
+        return setErro('Muitas tentativas seguidas. Aguarde um pouco e tente de novo.')
+      }
       if (error.response?.status === 409) setRecarregar((n) => n + 1) // atualiza horários e a conta
       if (error.response?.status === 401) {
         sair()
@@ -335,7 +338,7 @@ function App() {
             {mesesOcupados.length > 0 && !bloqueado && (
               <p className="combo-info">
                 <strong>Você já tem horário em {nomesMesesOcupados}.</strong>{' '}
-                Quer deixar os próximos garantidos?
+                Quer deixar os próximos garantidos? Pode marcar um horário em cada mês.
               </p>
             )}
 

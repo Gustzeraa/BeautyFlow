@@ -17,7 +17,8 @@ export default function AdminLogin({ onEntrar }) {
       await login(usuario.trim(), senha)
       onEntrar()
     } catch (err) {
-      if (err.response?.status === 400) setErro('Usuário ou senha incorretos.')
+      if (err.response?.status === 429) setErro('Muitas tentativas seguidas. Aguarde um minuto e tente de novo.')
+      else if (err.response?.status === 400) setErro('Usuário ou senha incorretos.')
       else setErro(err.message || 'Não foi possível entrar. Verifique se o servidor está rodando.')
     } finally {
       setEntrando(false)

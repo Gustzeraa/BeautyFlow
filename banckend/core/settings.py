@@ -110,7 +110,7 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/6.1/topics/i18n/
 
-LANGUAGE_CODE = 'en-us'
+LANGUAGE_CODE = 'pt-br'
 
 TIME_ZONE = 'America/Sao_Paulo'
 
@@ -165,9 +165,24 @@ if os.environ.get('DATABASE_URL'):
 # Arquivos estáticos (CSS do admin do Django) servidos pelo WhiteNoise
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 if 'whitenoise.middleware.WhiteNoiseMiddleware' not in MIDDLEWARE:
-    MIDDLEWARE.insert(1, 'whitenoise.middleware.WhiteNoiseMiddleware')
+    posicao = MIDDLEWARE.index('django.middleware.security.SecurityMiddleware') + 1
+    MIDDLEWARE.insert(posicao, 'whitenoise.middleware.WhiteNoiseMiddleware')
  
 TIME_ZONE = 'America/Sao_Paulo'
 USE_TZ = True
  
 GOOGLE_CLIENT_ID = os.environ.get('GOOGLE_CLIENT_ID', GOOGLE_CLIENT_ID)
+
+if not DEBUG:
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_HSTS_SECONDS = 60 * 60 * 24 * 30  # força HTTPS por 30 dias
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+
+REST_FRAMEWORK = {
+    **globals().get('REST_FRAMEWORK', {}),
+    'DEFAULT_THROTTLE_RATES': {
+        'login': '10/min',    # tentativas de login por IP
+        'agendar': '20/hour', # agendamentos por cliente
+    },
+}

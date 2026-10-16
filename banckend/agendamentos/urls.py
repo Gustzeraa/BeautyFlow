@@ -1,8 +1,9 @@
 from django.urls import path, include
-from rest_framework.authtoken.views import obtain_auth_token
+from rest_framework.authtoken.views import ObtainAuthToken
 from rest_framework.routers import SimpleRouter
 
 from .auth_views import login_google, meus_agendamentos, minha_conta
+from .throttles import LoginThrottle
 from .views import criar_agendamento, criar_agendamento_admin, horarios_disponiveis, listar_servicos
 from .views_admin import ServicoAdminViewSet, AgendamentoAdminViewSet
 
@@ -23,7 +24,7 @@ urlpatterns = [
     path('api/meus-agendamentos/', meus_agendamentos, name='meus-agendamentos'),
 
     # Painel
-    path('api/admin/login/', obtain_auth_token, name='admin-login'),
+    path('api/admin/login/', ObtainAuthToken.as_view(throttle_classes=[LoginThrottle]), name='admin-login'),
     path('api/admin/agendar/', criar_agendamento_admin, name='admin-agendar'),
     path('api/admin/', include(router.urls)),
 ]
