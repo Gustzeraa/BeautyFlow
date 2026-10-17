@@ -3,6 +3,7 @@ import Calendario, { toISO } from '../components/Calendario'
 import adminApi, { hora, mensagemErro, moeda } from './adminApi'
 import '../components/SessaoExtra.css'
 import NovoAgendamentoAdmin from './NovoAgendamentoAdmin'
+import { textoHorario } from './FolgasAdmin'
 import { DIAS_FECHADOS } from '../config'
 
 function tituloDoDia(data) {
@@ -36,6 +37,7 @@ export default function AgendaAdmin() {
   const [aviso, setAviso] = useState('')
   const [novoAberto, setNovoAberto] = useState(false)
   const [recarregar, setRecarregar] = useState(0)
+  const [bloqueios, setBloqueios] = useState([]) // folgas que tocam o mês
 
   // Busca o mês inteiro de uma vez: serve para os pontinhos e para a lista do dia
   useEffect(() => {
@@ -53,8 +55,34 @@ export default function AgendaAdmin() {
       .catch(() => !cancelado && setErro('Não foi possível carregar a agenda. Tente de novo em instantes.'))
       .finally(() => !cancelado && setCarregando(false))
 
+    adminApi
+      .get('/admin/bloqueios/', {
+        params: { de: toISO(new Date(ano, mes, 1)), ate: toISO(new Date(ano, mes + 1, 0)) },
+      })
+      .then(({ data }) => !cancelado && setBloqueios(data))
+      .catch(() => !cancelado && setBloqueios([]))
+
     return () => { cancelado = true }
   }, [mesAtual, recarregar])
+
+  // Expande os períodos de folga em dias 'YYYY-MM-DD'
+  const diasBloqueados = useMemo(() => {
+    const dias = new Set()
+    bloqueios.filter((b) => !b.hora_inicio && !b.hora_fim).forEach((b) => {
+      const [a1, m1, d1] = b.data_inicio.split('-').map(Number)
+      const [a2, m2, d2] = b.data_fim.split('-').map(Number)
+      const dia = new Date(a1, m1 - 1, d1)
+      const fim = new Date(a2, m2 - 1, d2)
+      while (dia <= fim) { dias.add(toISO(dia)); dia.setDate(dia.getDate() + 1) }
+    })
+    return dias
+  }, [bloqueios])
+  const bloqueiosDoDia = bloqueios.filter(
+    (b) => b.data_inicio <= toISO(dataSelecionada) && b.data_fim >= toISO(dataSelecionada)
+  )
+  // Folga de dia inteiro (o dia fecha) x bloqueio parcial (só alguns horários somem)
+  const folgaDoDia = bloqueiosDoDia.find((b) => !b.hora_inicio && !b.hora_fim)
+  const parciaisDoDia = bloqueiosDoDia.filter((b) => b.hora_inicio || b.hora_fim)
 
   const diasMarcados = useMemo(
     () => new Set(agendamentos.map((a) => toISO(new Date(a.data_hora_inicio)))),
@@ -103,7 +131,9 @@ export default function AgendaAdmin() {
 
   // Só dá para marcar em dia aberto, de hoje em diante
   const podeMarcar =
-    toISO(dataSelecionada) >= toISO(new Date()) && !DIAS_FECHADOS.includes(dataSelecionada.getDay())
+    toISO(dataSelecionada) >= toISO(new Date()) &&
+    !DIAS_FECHADOS.includes(dataSelecionada.getDay()) &&
+    !folgaDoDia
 
   function mudarMes(delta) {
     setMesAtual(new Date(mesAtual.getFullYear(), mesAtual.getMonth() + delta, 1))
@@ -118,6 +148,8 @@ export default function AgendaAdmin() {
         onSelecionar={(d) => { setDataSelecionada(d); setAviso('') }}
         bloquearPassado={false}
         diasMarcados={diasMarcados}
+        diasBloqueados={diasBloqueados}
+        travarDiasBloqueados={false}
       />
 
       <div className="agenda-dia-topo">
@@ -128,6 +160,18 @@ export default function AgendaAdmin() {
           </button>
         )}
       </div>
+
+      {folgaDoDia && (
+        <p className="folga-aviso">
+          <i className="fas fa-ban" /> Dia bloqueado{folgaDoDia.motivo ? `: ${folgaDoDia.motivo}` : ''}. As clientes não conseguem marcar.
+        </p>
+      )}
+
+      {!folgaDoDia && parciaisDoDia.map((b) => (
+        <p key={b.id} className="folga-aviso">
+          <i className="far fa-clock" /> {textoHorario(b)}{b.motivo ? ` (${b.motivo})` : ''}.
+        </p>
+      ))}
 
       {aviso && <p className="admin-sucesso" role="status">{aviso}</p>}
 

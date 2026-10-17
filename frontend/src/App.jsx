@@ -36,6 +36,8 @@ function App() {
   const [horarios, setHorarios] = useState([])
   const [carregandoHorarios, setCarregandoHorarios] = useState(false)
   const [diaFechado, setDiaFechado] = useState(false)
+  const [motivoFechado, setMotivoFechado] = useState('')
+  const [diasBloqueados, setDiasBloqueados] = useState(new Set()) // folgas da dona
 
   // Controle do Calendário
   const hoje = new Date()
@@ -130,6 +132,18 @@ function App() {
     setDataSelecionada(d)
   }, [ocupadosChave])
 
+  // Folgas/feriados do mês que está no calendário
+  useEffect(() => {
+    const ano = mesAtual.getFullYear()
+    const mes = mesAtual.getMonth()
+    axios
+      .get(`${API}/dias-bloqueados/`, {
+        params: { de: toISO(new Date(ano, mes, 1)), ate: toISO(new Date(ano, mes + 1, 0)) },
+      })
+      .then(({ data }) => setDiasBloqueados(new Set(data.dias)))
+      .catch(() => setDiasBloqueados(new Set()))
+  }, [mesAtual, recarregar])
+
   // 1. Busca os serviços ao carregar a página
   useEffect(() => {
     const buscarServicos = async () => {
@@ -156,6 +170,7 @@ function App() {
         })
         setHorarios(resposta.data.horarios_disponiveis)
         setDiaFechado(Boolean(resposta.data.fechado))
+        setMotivoFechado(resposta.data.motivo || '')
       } catch (error) {
         setHorarios([])
       } finally {
@@ -349,6 +364,7 @@ function App() {
               onSelecionar={setDataSelecionada}
               diasFechados={DIAS_FECHADOS}
               mesesBloqueados={mesesOcupados}
+              diasBloqueados={diasBloqueados}
             />
 
             {/* SERVIÇO (vem antes dos horários, porque a duração muda os horários livres) */}
@@ -392,7 +408,9 @@ function App() {
                 ))
               ) : (
                 <p style={{ gridColumn: '1/-1', textAlign: 'center', color: '#888' }}>
-                  {diaFechado ? 'O studio não abre neste dia.' : 'Sem horários neste dia.'}
+                  {diaFechado
+                    ? `O studio não vai atender neste dia${motivoFechado ? ` (${motivoFechado})` : ''}.`
+                    : 'Sem horários neste dia.'}
                 </p>
               )}
             </div>
@@ -425,7 +443,7 @@ function App() {
                   <SessaoExtra
                     key={`${n}-${chaveCombo}`}
                     numero={n}
-                    dataSugerida={somarDias(dataSelecionada, intervaloDias * (n - 1))}
+                    dataPrimeira={dataSelecionada}
                     horaPreferida={horaSelecionada}
                     servicoId={servicoId}
                     onChange={aoMudarSessao}

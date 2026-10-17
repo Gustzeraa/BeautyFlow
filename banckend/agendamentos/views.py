@@ -8,7 +8,7 @@ from rest_framework.decorators import api_view, authentication_classes, permissi
 from rest_framework.permissions import IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
 
-from .models import Servico, Agendamento
+from .models import Bloqueio, Servico, Agendamento
 from .throttles import AgendarThrottle
 
 # Horário de funcionamento do salão
@@ -57,16 +57,49 @@ def meses_ocupados(ativos):
     return sorted({(timezone.localtime(i).year, timezone.localtime(i).month) for i in ativos})
 
 
+def bloqueio_do_dia(dia):
+    """O bloqueio de DIA INTEIRO (folga, feriado...) que cobre esse dia, ou None."""
+    return Bloqueio.objects.filter(
+        data_inicio__lte=dia, data_fim__gte=dia, hora_inicio__isnull=True, hora_fim__isnull=True
+    ).first()
+
+
+def bloqueios_parciais(dia):
+    """Trechos bloqueados nesse dia (ex: feriado em que só atende até 14h), como (início, fim)."""
+    trechos = []
+    parciais = Bloqueio.objects.filter(data_inicio__lte=dia, data_fim__gte=dia).exclude(
+        hora_inicio__isnull=True, hora_fim__isnull=True
+    )
+    for b in parciais:
+        inicio = no_dia(dia, b.hora_inicio or time(0, 0))
+        fim = no_dia(dia, b.hora_fim) if b.hora_fim else no_dia(dia, time(23, 59))
+        trechos.append((inicio, fim))
+    return trechos
+
+
+def bate_em_bloqueio_parcial(inicio, fim, trechos):
+    return any(inicio < t_fim and fim > t_inicio for t_inicio, t_fim in trechos)
+
+
+def dia_fechado(dia):
+    """Dia sem atendimento: fora do expediente da semana ou bloqueado pela dona."""
+    return dia.weekday() not in EXPEDIENTE or bloqueio_do_dia(dia) is not None
+
+
 def proximo_dia_aberto(dia):
-    """Se o dia cair num dia fechado (ex: domingo), avança para o próximo dia aberto."""
-    while dia.weekday() not in EXPEDIENTE:
+    """Se o dia estiver fechado (domingo, folga), avança para o próximo dia aberto."""
+    for _ in range(120):  # trava de segurança contra períodos enormes de bloqueio
+        if not dia_fechado(dia):
+            break
         dia += timedelta(days=1)
     return dia
 
 
 def dia_aberto_anterior(dia):
     """Volta até o dia aberto mais próximo (ex: domingo vira sábado)."""
-    while dia.weekday() not in EXPEDIENTE:
+    for _ in range(120):
+        if not dia_fechado(dia):
+            break
         dia -= timedelta(days=1)
     return dia
 
@@ -96,8 +129,8 @@ def bate_no_almoco(inicio, fim, expediente):
 
 
 def blocos_ocupados(dia, expediente, agendamentos):
-    """Intervalos em que não dá para atender: almoço + agendamentos do dia."""
-    blocos = []
+    """Intervalos em que não dá para atender: almoço + bloqueios parciais + agendamentos do dia."""
+    blocos = list(bloqueios_parciais(dia))
     if expediente.get('almoco'):
         almoco_inicio, almoco_fim = expediente['almoco']
         blocos.append((no_dia(dia, almoco_inicio), no_dia(dia, almoco_fim)))
@@ -152,11 +185,13 @@ def horarios_disponiveis(request):
         return Response({'erro': 'Serviço não encontrado ou data inválida.'}, status=400)
 
     expediente = EXPEDIENTE.get(data_busca.weekday())
-    if not expediente:
+    bloqueio = bloqueio_do_dia(data_busca)
+    if not expediente or bloqueio:
         return Response({
             'data': data_str,
             'servico': servico.nome,
             'fechado': True,
+            'motivo': bloqueio.motivo if bloqueio else '',
             'horarios_disponiveis': [],
         })
 
@@ -171,6 +206,7 @@ def horarios_disponiveis(request):
         Agendamento.objects.filter(data_hora_inicio__date=data_busca).select_related('servico')
     )
     blocos = blocos_ocupados(data_busca, expediente, agendamentos_do_dia)
+    trechos_bloqueados = bloqueios_parciais(data_busca)
 
     horarios_livres = []
     hora_atual = no_dia(data_busca, expediente['abertura'])
@@ -184,6 +220,7 @@ def horarios_disponiveis(request):
         if (
             hora_atual > agora
             and not bate_no_almoco(hora_atual, fim_previsto, expediente)
+            and not bate_em_bloqueio_parcial(hora_atual, fim_previsto, trechos_bloqueados)
             and not tem_conflito(hora_atual, fim_previsto, agendamentos_do_dia)
             # Esconde horários que deixariam um vão pequeno demais para qualquer serviço
             and not deixa_buraco(hora_atual, fim_previsto, data_busca, expediente, blocos, agora, menor_servico)
@@ -208,8 +245,12 @@ def validar_horario(inicio, fim):
     expediente = EXPEDIENTE.get(dia.weekday())
     if not expediente:
         return 'cai num dia em que o studio não abre'
+    if bloqueio_do_dia(dia):
+        return 'cai num dia em que o studio não vai atender'
     if inicio < no_dia(dia, expediente['abertura']) or fim > no_dia(dia, expediente['fechamento']):
         return 'está fora do funcionamento do studio'
+    if bate_em_bloqueio_parcial(inicio, fim, bloqueios_parciais(dia)):
+        return 'está fora do horário de atendimento desse dia'
     if bate_no_almoco(inicio, fim, expediente):
         return 'cai no horário de almoço do studio'
     return None
@@ -348,3 +389,48 @@ def listar_servicos(request):
         'id', 'nome', 'preco', 'duracao_minutos', 'sessoes', 'intervalo_dias'
     )
     return Response(servicos)
+
+
+@api_view(['GET'])
+def dias_bloqueados(request):
+    """Dias bloqueados pela dona entre ?de= e ?ate= (YYYY-MM-DD), para o calendário."""
+    try:
+        de = datetime.strptime(request.GET.get('de', ''), '%Y-%m-%d').date()
+        ate = datetime.strptime(request.GET.get('ate', ''), '%Y-%m-%d').date()
+    except ValueError:
+        return Response({'erro': 'Informe de e ate no formato AAAA-MM-DD.'}, status=400)
+    if ate < de or (ate - de).days > 400:
+        return Response({'erro': 'Período inválido.'}, status=400)
+
+    dias = set()
+    # Só bloqueios de dia inteiro somem do calendário; os parciais só tiram horários
+    for b in Bloqueio.objects.filter(data_fim__gte=de, data_inicio__lte=ate,
+                                     hora_inicio__isnull=True, hora_fim__isnull=True):
+        dia = max(b.data_inicio, de)
+        while dia <= min(b.data_fim, ate):
+            dias.add(dia.isoformat())
+            dia += timedelta(days=1)
+    return Response({'dias': sorted(dias)})
+
+
+@api_view(['GET'])
+def datas_combo(request):
+    """
+    Datas aceitas para a sessão N de um combo, a partir da data da 1ª sessão.
+    ?data=YYYY-MM-DD&servico_id=1&sessao=2 -> {'datas': [...], 'sugerida': '...'}
+    Considera domingo, expediente e os dias bloqueados pela dona.
+    """
+    try:
+        primeira = datetime.strptime(request.GET.get('data', ''), '%Y-%m-%d').date()
+        servico = Servico.objects.get(id=request.GET.get('servico_id'))
+        sessao = int(request.GET.get('sessao', 2))
+    except (ValueError, TypeError, Servico.DoesNotExist):
+        return Response({'erro': 'Parâmetros inválidos.'}, status=400)
+    if not 2 <= sessao <= max(servico.sessoes, 2):
+        return Response({'erro': 'Sessão inválida.'}, status=400)
+
+    datas = datas_permitidas_combo(primeira, servico.intervalo_dias, sessao)
+    return Response({
+        'datas': [d.isoformat() for d in datas],
+        'sugerida': datas[FOLGA_COMBO_ANTES].isoformat(),
+    })

@@ -1,6 +1,8 @@
 # Coloque no app da API (ao lado do serializers.py atual)
 from rest_framework import serializers
-from .models import Servico, Agendamento
+from django.utils import timezone
+
+from .models import Bloqueio, Servico, Agendamento
 
 
 class ServicoAdminSerializer(serializers.ModelSerializer):
@@ -68,3 +70,23 @@ class AgendamentoAdminSerializer(serializers.ModelSerializer):
             "data_hora_inicio", "data_hora_fim",
             "sessao_numero", "total_sessoes", "valor_sessao", "sessoes_combo",
         ]
+
+
+class BloqueioAdminSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Bloqueio
+        fields = ["id", "data_inicio", "data_fim", "hora_inicio", "hora_fim", "motivo"]
+
+    def validate(self, dados):
+        inicio, fim = dados["data_inicio"], dados["data_fim"]
+        if fim < inicio:
+            raise serializers.ValidationError({"data_fim": "A data final precisa ser igual ou depois da inicial."})
+        if inicio < timezone.localdate():
+            raise serializers.ValidationError({"data_inicio": "Não dá para bloquear dias que já passaram."})
+        if (fim - inicio).days > 365:
+            raise serializers.ValidationError({"data_fim": "O bloqueio pode ter no máximo 1 ano."})
+        h_ini, h_fim = dados.get("hora_inicio"), dados.get("hora_fim")
+        if h_ini and h_fim and h_fim <= h_ini:
+            raise serializers.ValidationError({"hora_fim": "O horário final precisa ser depois do inicial."})
+        dados["motivo"] = (dados.get("motivo") or "").strip()
+        return dados

@@ -3,6 +3,7 @@ import { estaLogado, logout } from './adminApi'
 import AdminLogin from './AdminLogin'
 import AgendaAdmin from './AgendaAdmin'
 import ServicosAdmin from './ServicosAdmin'
+import FolgasAdmin from './FolgasAdmin'
 import '../App.css'
 import './Admin.css'
 
@@ -44,11 +45,21 @@ export default function AdminApp() {
           >
             Serviços
           </button>
+          <button
+            role="tab"
+            aria-selected={aba === 'folgas'}
+            className={aba === 'folgas' ? 'ativa' : ''}
+            onClick={() => setAba('folgas')}
+          >
+            Folgas
+          </button>
         </div>
       </div>
 
       <div className="content">
-        {aba === 'agenda' ? <AgendaAdmin /> : <ServicosAdmin />}
+        {aba === 'agenda' && <AgendaAdmin />}
+        {aba === 'servicos' && <ServicosAdmin />}
+        {aba === 'folgas' && <FolgasAdmin />}
       </div>
     </div>
   )

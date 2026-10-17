@@ -202,3 +202,52 @@
   color: var(--texto-claro);
 }
 .sheet .horarios-grid { margin-bottom: 20px; }
+
+/* --- Folgas --- */
+.admin-form-folga {
+  padding: 18px 16px 16px;
+  border-radius: 16px;
+  background: var(--rosa-fundo);
+  margin-bottom: 18px;
+}
+.admin-form-folga h3 { font-size: 1.05rem; color: var(--texto-escuro); margin-bottom: 4px; }
+.admin-form-folga .input-wrapper label { background: var(--rosa-fundo); }
+.folga-texto { font-size: 0.88rem; color: var(--texto-claro); margin-bottom: 20px; }
+.folga-datas { display: flex; gap: 12px; }
+.folga-datas .input-wrapper { flex: 1; }
+
+.folga-conflitos {
+  padding: 14px;
+  margin-bottom: 18px;
+  border-radius: 14px;
+  background: #FFF4E5;
+  color: #8A5300;
+  font-size: 0.9rem;
+}
+.folga-conflitos ul { margin: 8px 0; padding-left: 18px; }
+.folga-conflitos span { display: block; font-size: 0.85rem; }
+
+.folgas-titulo { font-size: 1.05rem; color: var(--texto-escuro); margin: 6px 0 14px; }
+.folga-motivo { font-size: 0.88rem; color: var(--texto-claro); }
+.btn-texto-curto {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 0.88rem;
+  color: #C0392B;
+  cursor: pointer;
+}
+.btn-texto-curto:hover { background: #FDEEEE; }
+
+.folga-aviso {
+  margin: 10px 0 4px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: #F2F2F2;
+  color: var(--texto-escuro);
+  font-size: 0.9rem;
+}
+.folga-aviso i { color: var(--texto-claro); margin-right: 4px; }

@@ -18,6 +18,8 @@ export default function Calendario({
   diasMarcados, // Set de 'YYYY-MM-DD' que ganham um pontinho
   diasFechados = [], // dias da semana bloqueados (0 = domingo)
   mesesBloqueados = [], // ['YYYY-MM']: meses inteiros bloqueados
+  diasBloqueados, // Set de 'YYYY-MM-DD': folgas/feriados da dona
+  travarDiasBloqueados = true, // cliente: não clica; painel: só mostra diferente
 }) {
   const ano = mesAtual.getFullYear()
   const mes = mesAtual.getMonth()
@@ -34,8 +36,10 @@ export default function Calendario({
   for (let dia = 1; dia <= diasNoMes; dia++) {
     const data = new Date(ano, mes, dia)
     const iso = toISO(data)
+    const folga = diasBloqueados?.has(iso)
     const passado =
       (bloquearPassado && iso < hojeISO) ||
+      (folga && travarDiasBloqueados) ||
       mesesBloqueados.includes(iso.slice(0, 7)) ||
       diasFechados.includes(data.getDay())
     const selecionado = iso === selecionadoISO
@@ -54,6 +58,7 @@ export default function Calendario({
           selecionado && 'selected',
           hoje && !selecionado && 'today',
           marcado && 'has-event',
+          folga && 'folga',
         ].filter(Boolean).join(' ')}
       >
         {dia}

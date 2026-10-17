@@ -56,3 +56,29 @@ class Agendamento(models.Model):
 
     def __str__(self):
         return f"{self.nome_cliente} - {self.data_hora_inicio.strftime('%d/%m %H:%M')}"
+
+
+class Bloqueio(models.Model):
+    """Dias em que o studio não vai atender (feriado, férias, curso...)."""
+    data_inicio = models.DateField()
+    data_fim = models.DateField()
+    # Sem horas = dia inteiro. Com horas = só esse trecho de cada dia fica bloqueado:
+    #   hora_inicio sem hora_fim -> bloqueia de hora_inicio até o fim do dia ("atende só até")
+    #   hora_fim sem hora_inicio -> bloqueia do começo do dia até hora_fim ("atende só a partir de")
+    hora_inicio = models.TimeField(null=True, blank=True)
+    hora_fim = models.TimeField(null=True, blank=True)
+    motivo = models.CharField(max_length=100, blank=True)
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['data_inicio']
+
+    @property
+    def dia_inteiro(self):
+        return self.hora_inicio is None and self.hora_fim is None
+
+    def __str__(self):
+        periodo = self.data_inicio.strftime('%d/%m/%Y')
+        if self.data_fim != self.data_inicio:
+            periodo += f" a {self.data_fim.strftime('%d/%m/%Y')}"
+        return f"{periodo} {self.motivo}".strip()

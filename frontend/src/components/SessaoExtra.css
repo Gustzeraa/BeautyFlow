@@ -140,3 +140,11 @@
   color: var(--texto-claro);
   margin-bottom: 18px;
 }
+
+/* --- Folgas da dona no calendário --- */
+.day-btn.folga {
+  background-image: repeating-linear-gradient(45deg, #EFEFEF 0 4px, transparent 4px 8px);
+  color: #B5B5B5;
+  text-decoration: line-through;
+}
+.day-btn.folga.selected { color: #fff; background-image: none; text-decoration: none; }

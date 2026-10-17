@@ -1,29 +1,11 @@
 import { useEffect, useState } from 'react'
 import axios from 'axios'
 import { toISO } from './Calendario'
-import { API_URL, DIAS_FECHADOS } from '../config'
+import { API_URL } from '../config'
 
-const FOLGA_ANTES = 1 // igual ao FOLGA_COMBO_ANTES do Django
-const FOLGA_DIAS = 1  // igual ao FOLGA_COMBO_DIAS do Django
-
-function somarDias(data, dias) {
-  const d = new Date(data)
-  d.setDate(d.getDate() + dias)
-  return d
-}
-
-// Se cair num dia fechado (domingo), volta para o dia aberto anterior (sábado)
-function diaAbertoAnterior(data) {
-  let d = new Date(data)
-  while (DIAS_FECHADOS.includes(d.getDay())) d = somarDias(d, -1)
-  return d
-}
-
-// Se cair num dia fechado (domingo), avança para o próximo dia aberto
-function proximoDiaAberto(data) {
-  let d = new Date(data)
-  while (DIAS_FECHADOS.includes(d.getDay())) d = somarDias(d, 1)
-  return d
+function isoParaData(iso) {
+  const [a, m, d] = iso.split('-').map(Number)
+  return new Date(a, m - 1, d)
 }
 
 function dataCurta(data) {
@@ -32,25 +14,38 @@ function dataCurta(data) {
 }
 
 // Escolha do horário de uma sessão seguinte do combo (2ª, 3ª...)
-export default function SessaoExtra({ numero, dataSugerida, horaPreferida, servicoId, onChange }) {
-  // Opções de data: dia anterior + data do combo (ou o próximo dia aberto) + dia seguinte.
-  // Domingo nunca entra: o anterior pula para sábado, o seguinte pula para segunda.
-  const base = proximoDiaAberto(dataSugerida)
-  const opcoes = [base]
-  for (let i = 0; i < FOLGA_ANTES; i++) opcoes.unshift(diaAbertoAnterior(somarDias(opcoes[0], -1)))
-  for (let i = 0; i < FOLGA_DIAS; i++) opcoes.push(proximoDiaAberto(somarDias(opcoes[opcoes.length - 1], 1)))
-  const indiceBase = FOLGA_ANTES
-
-  const [escolha, setEscolha] = useState(indiceBase) // começa na data do combo
+export default function SessaoExtra({ numero, dataPrimeira, horaPreferida, servicoId, onChange }) {
+  // Datas possíveis vêm do Django: já consideram domingo, expediente e folgas da dona
+  const [opcoes, setOpcoes] = useState([])
+  const [indiceBase, setIndiceBase] = useState(0)
+  const [escolha, setEscolha] = useState(0)
   const [horarios, setHorarios] = useState([])
   const [hora, setHora] = useState(null)
   const [carregando, setCarregando] = useState(true)
 
-  const data = opcoes[escolha]
-  const dataISO = toISO(data)
+  const primeiraISO = toISO(dataPrimeira)
+  useEffect(() => {
+    let cancelado = false
+    axios
+      .get(`${API_URL}/datas-combo/`, { params: { data: primeiraISO, servico_id: servicoId, sessao: numero } })
+      .then(({ data: resp }) => {
+        if (cancelado) return
+        const lista = resp.datas.map(isoParaData)
+        const base = Math.max(resp.datas.indexOf(resp.sugerida), 0)
+        setOpcoes(lista)
+        setIndiceBase(base)
+        setEscolha(base)
+      })
+      .catch(() => !cancelado && setOpcoes([]))
+    return () => { cancelado = true }
+  }, [primeiraISO, servicoId, numero])
+
+  const data = opcoes[escolha] || null
+  const dataISO = data ? toISO(data) : null
 
   // Busca os horários livres do dia da sessão
   useEffect(() => {
+    if (!dataISO) return
     let cancelado = false
     setCarregando(true)
     axios
@@ -69,7 +64,7 @@ export default function SessaoExtra({ numero, dataSugerida, horaPreferida, servi
 
   // Avisa o App sempre que a data ou o horário mudarem
   useEffect(() => {
-    onChange(numero, { data: dataISO, hora })
+    if (dataISO) onChange(numero, { data: dataISO, hora })
   }, [dataISO, hora])
 
   return (

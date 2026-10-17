@@ -122,7 +122,7 @@ export default function NovoAgendamentoAdmin({ data, onFechar, onCriado }) {
           <div className="input-wrapper">
             <label htmlFor="novo-nome">Nome da cliente</label>
             <input
-              id="novo-nome" className="text-input" placeholder="Nome da Cliente"
+              id="novo-nome" className="text-input" placeholder="Dona Maria"
               value={nome} onChange={(e) => setNome(e.target.value)}
             />
           </div>
@@ -177,7 +177,7 @@ export default function NovoAgendamentoAdmin({ data, onFechar, onCriado }) {
               <SessaoExtra
                 key={`${n}-${chaveCombo}`}
                 numero={n}
-                dataSugerida={somarDias(data, (servico.intervalo_dias || 0) * (n - 1))}
+                dataPrimeira={data}
                 horaPreferida={hora}
                 servicoId={servicoId}
                 onChange={(numero, valor) =>
